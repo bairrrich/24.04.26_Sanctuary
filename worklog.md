@@ -256,3 +256,42 @@ Stage Summary:
 - Build Calendar module (event management → intelligence/charisma XP)
 - Build Shifts module (work schedule → endurance XP)
 - Polish and refine existing modules
+
+---
+Task ID: 17
+Agent: Main Agent
+Task: Fix Training and Diary tab switching lag/freeze and Training date navigation
+
+Work Log:
+- **Root cause analysis**: Three performance issues identified:
+  1. `AnimatePresence mode="wait"` forced full unmount/remount cycle on every tab switch (exit animation → unmount → enter animation → mount), causing visible delay
+  2. `isLoading: true` in stores blocked ALL content including tabs, causing full-page spinner on every tab switch or date change
+  3. Training store used single `workouts` array for both daily view and range view — tabs overwrote each other's data
+
+- **training-store.ts fixes**:
+  - Split into `dailyWorkouts` + `rangeWorkouts` with separate loading states (`isDailyLoading`/`isRangeLoading`)
+  - Added cache keys (`lastDailyFetchDate`, `lastRangeFetchKey`) to skip redundant fetches
+  - Kept `workouts` + `isLoading` for backward compatibility
+
+- **training-page.tsx fixes**:
+  - Removed `AnimatePresence mode="wait"` — tabs now switch instantly with simple conditional rendering
+  - Tabs always visible, never hidden during loading
+  - WorkoutsTab shows inline `InlineSpinner` instead of blocking whole page
+  - Date navigation works without full-page spinner — only inline content reloads
+
+- **diary-store.ts fixes**:
+  - Added `lastFetchKey` cache to skip redundant fetches
+  - Invalidate cache on create (so new entries appear)
+
+- **diary-page.tsx fixes**:
+  - Removed `AnimatePresence mode="wait"` — instant tab switching
+  - Tabs always visible, never hidden during loading
+  - EntriesTab shows inline spinner only when entries list is empty and loading
+  - Calendar tab's loadEntries no longer conflicts with parent (cache prevents duplicate fetches)
+
+Stage Summary:
+- Tab switching in Training: instant, no freeze ✅
+- Tab switching in Diary: instant, no freeze ✅
+- Date navigation in Training: works perfectly (prev/next) ✅
+- No more full-page spinners blocking UI ✅
+- All changes backward compatible, no breaking changes

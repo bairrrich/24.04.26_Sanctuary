@@ -36,6 +36,8 @@ interface DiaryState {
   currentEntry: DiaryEntry | null;
   isLoading: boolean;
   selectedDate: string;
+  // Cache tracking
+  lastFetchKey: string | null;
 
   // Actions
   loadEntries: (from: string, to: string) => Promise<void>;
@@ -57,14 +59,22 @@ export const useDiaryStore = create<DiaryState>()((set, get) => ({
   selectedDate: new Date().getFullYear() + '-' +
     String(new Date().getMonth() + 1).padStart(2, '0') + '-' +
     String(new Date().getDate()).padStart(2, '0'),
+  lastFetchKey: null,
 
   loadEntries: async (from: string, to: string) => {
+    const key = `${from}_${to}`;
+    const { lastFetchKey, entries, isLoading } = get();
+    // Skip if already fetched this exact range and not currently loading
+    if (lastFetchKey === key && entries.length >= 0 && !isLoading) {
+      return;
+    }
+
     set({ isLoading: true });
     try {
       const res = await fetch(`/api/diary?from=${from}&to=${to}`);
       if (!res.ok) throw new Error('Failed to load entries');
       const data = await res.json();
-      set({ entries: data.entries ?? [], isLoading: false });
+      set({ entries: data.entries ?? [], isLoading: false, lastFetchKey: key });
     } catch (error) {
       console.error('Error loading diary entries:', error);
       set({ isLoading: false });
@@ -93,10 +103,11 @@ export const useDiaryStore = create<DiaryState>()((set, get) => ({
       if (!res.ok) throw new Error('Failed to create entry');
       const result = await res.json();
 
-      // Add the new entry to the list
+      // Add the new entry to the list and invalidate cache
       set((state) => ({
         entries: [result.entry, ...state.entries],
         currentEntry: result.entry,
+        lastFetchKey: null, // Invalidate cache
       }));
 
       // Refresh gamification if XP was emitted

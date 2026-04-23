@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Dumbbell, Plus, ChevronLeft, ChevronRight, Trash2, Trophy,
   Timer, Flame, TrendingUp, Award, BarChart3, ChevronDown, Check, X,
@@ -70,18 +70,31 @@ function formatVolume(exercises: Exercise[]): number {
   return exercises.reduce((sum, ex) => sum + ex.sets * ex.reps * ex.weight, 0);
 }
 
+// ==================== Inline Spinner ====================
+
+function InlineSpinner() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+}
+
 // ==================== Main Component ====================
 
 export function TrainingPage() {
   const language = useSettingsStore((s) => s.language);
   const config = MODULE_REGISTRY.training;
-  const { workouts, isLoading, selectedDate, loadWorkouts, setSelectedDate } = useTrainingStore();
+  const {
+    dailyWorkouts, isDailyLoading, selectedDate,
+    loadWorkouts, setSelectedDate,
+  } = useTrainingStore();
   const loadCharacter = useGamificationStore((s) => s.loadCharacter);
 
   const [activeTab, setActiveTab] = useState('workouts');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
 
-  // Load workouts for selected date
+  // Load workouts for selected date — only when date actually changes
   useEffect(() => {
     loadWorkouts(selectedDate);
   }, [selectedDate, loadWorkouts]);
@@ -95,8 +108,7 @@ export function TrainingPage() {
     return () => window.removeEventListener('gamification:updated', handler);
   }, [loadCharacter]);
 
-  const todayWorkouts = workouts.filter((w) => w.date === selectedDate);
-  const hasWorkoutToday = todayWorkouts.length > 0;
+  const hasWorkoutToday = dailyWorkouts.length > 0;
 
   const tabs: TabItem[] = [
     { id: 'workouts', label: language === 'ru' ? 'Тренировки' : 'Workouts' },
@@ -112,49 +124,42 @@ export function TrainingPage() {
         accentColor={config.accentColor}
         subtitle={
           hasWorkoutToday
-            ? `${todayWorkouts.length} ${language === 'ru' ? 'тренировка' : 'workout'}${todayWorkouts.length > 1 ? 's' : ''}`
+            ? `${dailyWorkouts.length} ${language === 'ru' ? 'тренировка' : 'workout'}${dailyWorkouts.length > 1 ? 's' : ''}`
             : undefined
         }
       />
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        ) : (
-          <>
-            <ModuleTabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              accentColor={config.accentColor}
-            />
+        {/* Always show tabs — never hide them during loading */}
+        <ModuleTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          accentColor={config.accentColor}
+        />
 
-            <AnimatePresence mode="wait">
-              {activeTab === 'workouts' && (
-                <WorkoutsTab
-                  workouts={todayWorkouts}
-                  selectedDate={selectedDate}
-                  onDateChange={setSelectedDate}
-                  language={language}
-                  accentColor={config.accentColor}
-                />
-              )}
-              {activeTab === 'history' && (
-                <HistoryTab
-                  language={language}
-                  accentColor={config.accentColor}
-                />
-              )}
-              {activeTab === 'analytics' && (
-                <AnalyticsTab
-                  language={language}
-                  accentColor={config.accentColor}
-                />
-              )}
-            </AnimatePresence>
-          </>
+        {/* Tab content — no AnimatePresence mode="wait" for instant switching */}
+        {activeTab === 'workouts' && (
+          <WorkoutsTab
+            workouts={dailyWorkouts}
+            isLoading={isDailyLoading}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            language={language}
+            accentColor={config.accentColor}
+          />
+        )}
+        {activeTab === 'history' && (
+          <HistoryTab
+            language={language}
+            accentColor={config.accentColor}
+          />
+        )}
+        {activeTab === 'analytics' && (
+          <AnalyticsTab
+            language={language}
+            accentColor={config.accentColor}
+          />
         )}
       </div>
 
@@ -178,12 +183,14 @@ export function TrainingPage() {
 
 function WorkoutsTab({
   workouts,
+  isLoading,
   selectedDate,
   onDateChange,
   language,
   accentColor,
 }: {
   workouts: Workout[];
+  isLoading: boolean;
   selectedDate: string;
   onDateChange: (date: string) => void;
   language: 'en' | 'ru';
@@ -194,13 +201,11 @@ function WorkoutsTab({
 
   return (
     <motion.div
-      key="workouts"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-4"
     >
-      {/* Date Navigation */}
+      {/* Date Navigation — always visible */}
       <div className="flex items-center justify-between rounded-xl border bg-card p-3">
         <button
           onClick={() => onDateChange(addDays(selectedDate, -1))}
@@ -230,8 +235,10 @@ function WorkoutsTab({
         </button>
       </div>
 
-      {/* Workouts or Empty State */}
-      {workouts.length === 0 ? (
+      {/* Loading state — inline, not blocking the whole page */}
+      {isLoading ? (
+        <InlineSpinner />
+      ) : workouts.length === 0 ? (
         <EmptyState
           icon={Dumbbell}
           title={language === 'ru' ? 'Нет тренировок' : 'No workouts'}
@@ -243,7 +250,6 @@ function WorkoutsTab({
           accentColor={accentColor}
           actionLabel={language === 'ru' ? 'Начать тренировку' : 'Start workout'}
           onAction={() => {
-            // Trigger FAB click by dispatching custom event
             const fab = document.querySelector('[data-fab]') as HTMLElement;
             fab?.click();
           }}
@@ -332,45 +338,37 @@ function WorkoutCard({
       </button>
 
       {/* Exercises */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-3 space-y-2">
-              {workout.exercises.map((exercise) => (
-                <ExerciseRow
-                  key={exercise.id}
-                  exercise={exercise}
-                  language={language}
-                  accentColor={accentColor}
-                />
-              ))}
-              {workout.exercises.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  {language === 'ru' ? 'Нет упражнений' : 'No exercises'}
-                </p>
-              )}
-              {/* Volume & Delete */}
-              <div className="flex items-center justify-between pt-2 border-t">
-                <span className="text-[10px] text-muted-foreground">
-                  {language === 'ru' ? 'Объём' : 'Volume'}: {formatVolume(workout.exercises).toLocaleString()} kg
-                </span>
-                <button
-                  onClick={() => deleteWorkout(workout.id)}
-                  className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                </button>
-              </div>
+      {expanded && (
+        <div className="overflow-hidden">
+          <div className="px-4 pb-3 space-y-2">
+            {workout.exercises.map((exercise) => (
+              <ExerciseRow
+                key={exercise.id}
+                exercise={exercise}
+                language={language}
+                accentColor={accentColor}
+              />
+            ))}
+            {workout.exercises.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                {language === 'ru' ? 'Нет упражнений' : 'No exercises'}
+              </p>
+            )}
+            {/* Volume & Delete */}
+            <div className="flex items-center justify-between pt-2 border-t">
+              <span className="text-[10px] text-muted-foreground">
+                {language === 'ru' ? 'Объём' : 'Volume'}: {formatVolume(workout.exercises).toLocaleString()} kg
+              </span>
+              <button
+                onClick={() => deleteWorkout(workout.id)}
+                className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+              </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -430,7 +428,8 @@ function HistoryTab({
   accentColor: string;
 }) {
   const loadWorkoutsRange = useTrainingStore((s) => s.loadWorkoutsRange);
-  const workouts = useTrainingStore((s) => s.workouts);
+  const rangeWorkouts = useTrainingStore((s) => s.rangeWorkouts);
+  const isRangeLoading = useTrainingStore((s) => s.isRangeLoading);
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -445,19 +444,21 @@ function HistoryTab({
   // Group workouts by date
   const groupedWorkouts = useMemo(() => {
     const groups: Record<string, Workout[]> = {};
-    for (const w of workouts) {
+    for (const w of rangeWorkouts) {
       if (!groups[w.date]) groups[w.date] = [];
       groups[w.date].push(w);
     }
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-  }, [workouts]);
+  }, [rangeWorkouts]);
+
+  if (isRangeLoading && rangeWorkouts.length === 0) {
+    return <InlineSpinner />;
+  }
 
   return (
     <motion.div
-      key="history"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-4"
     >
       {groupedWorkouts.length === 0 ? (
@@ -550,41 +551,33 @@ function HistoryWorkoutCard({
         </div>
       </button>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3 space-y-1.5">
-              {workout.exercises.map((exercise) => (
-                <ExerciseRow
-                  key={exercise.id}
-                  exercise={exercise}
-                  language={language}
-                  accentColor={accentColor}
-                />
-              ))}
-              {workout.note && (
-                <p className="text-[10px] text-muted-foreground italic px-1">
-                  {workout.note}
-                </p>
-              )}
-              <div className="flex items-center justify-end pt-1.5 border-t">
-                <button
-                  onClick={() => deleteWorkout(workout.id)}
-                  className="p-1 rounded-lg hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                </button>
-              </div>
+      {expanded && (
+        <div className="overflow-hidden">
+          <div className="px-3 pb-3 space-y-1.5">
+            {workout.exercises.map((exercise) => (
+              <ExerciseRow
+                key={exercise.id}
+                exercise={exercise}
+                language={language}
+                accentColor={accentColor}
+              />
+            ))}
+            {workout.note && (
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                {workout.note}
+              </p>
+            )}
+            <div className="flex items-center justify-end pt-1.5 border-t">
+              <button
+                onClick={() => deleteWorkout(workout.id)}
+                className="p-1 rounded-lg hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -599,14 +592,17 @@ function AnalyticsTab({
   accentColor: string;
 }) {
   const loadWorkoutsRange = useTrainingStore((s) => s.loadWorkoutsRange);
-  const workouts = useTrainingStore((s) => s.workouts);
+  const rangeWorkouts = useTrainingStore((s) => s.rangeWorkouts);
+  const isRangeLoading = useTrainingStore((s) => s.isRangeLoading);
+  const [rangeLoaded, setRangeLoaded] = useState(false);
 
   useEffect(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    loadWorkoutsRange(d.toISOString().split('T')[0], getTodayString());
+    loadWorkoutsRange(d.toISOString().split('T')[0], getTodayString()).then(() => setRangeLoaded(true));
   }, [loadWorkoutsRange]);
 
+  const workouts = rangeWorkouts;
   const allExercises = workouts.flatMap((w) => w.exercises);
   const totalVolume = formatVolume(allExercises);
   const totalPRs = allExercises.filter((e) => e.isPR).length;
@@ -657,12 +653,14 @@ function AnalyticsTab({
     },
   ];
 
+  if (isRangeLoading && !rangeLoaded) {
+    return <InlineSpinner />;
+  }
+
   return (
     <motion.div
-      key="analytics"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-4"
     >
       {/* Stats Grid */}

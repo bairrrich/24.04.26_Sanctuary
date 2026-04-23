@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   BookOpen,
   Trash2,
@@ -86,6 +86,16 @@ const MONTH_NAMES_RU = ['Январь', 'Февраль', 'Март', 'Апре�
 const DAY_NAMES_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_NAMES_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+// ==================== Inline Spinner ====================
+
+function InlineSpinner() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+}
+
 // ==================== Main Component ====================
 
 export function DiaryPage() {
@@ -140,24 +150,8 @@ export function DiaryPage() {
       />
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        ) : entries.length === 0 && activeTab === 'entries' ? (
-          <EmptyState
-            icon={BookOpen}
-            title={language === 'ru' ? 'Нет записей' : 'No entries yet'}
-            description={
-              language === 'ru'
-                ? 'Начните писать дневник, чтобы отслеживать свои мысли'
-                : 'Start journaling to track your thoughts and reflections'
-            }
-            accentColor={config.accentColor}
-            actionLabel={language === 'ru' ? 'Написать запись' : 'Write entry'}
-            onAction={() => setShowCreateSheet(true)}
-          />
-        ) : (
+        {/* Show empty state only on first load with no entries and on entries tab */}
+        {!isLoading && entries.length === 0 && activeTab === 'entries' ? (
           <>
             <ModuleTabs
               tabs={tabs}
@@ -165,42 +159,64 @@ export function DiaryPage() {
               onTabChange={setActiveTab}
               accentColor={config.accentColor}
             />
+            <EmptyState
+              icon={BookOpen}
+              title={language === 'ru' ? 'Нет записей' : 'No entries yet'}
+              description={
+                language === 'ru'
+                  ? 'Начните писать дневник, чтобы отслеживать свои мысли'
+                  : 'Start journaling to track your thoughts and reflections'
+              }
+              accentColor={config.accentColor}
+              actionLabel={language === 'ru' ? 'Написать запись' : 'Write entry'}
+              onAction={() => setShowCreateSheet(true)}
+            />
+          </>
+        ) : (
+          <>
+            {/* Always show tabs — never hide them during loading */}
+            <ModuleTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              accentColor={config.accentColor}
+            />
 
-            <AnimatePresence mode="wait">
-              {activeTab === 'entries' && (
-                <EntriesTab
-                  entries={entries}
-                  language={language}
-                  accentColor={config.accentColor}
-                  onEditEntry={(entry) => {
-                    setSelectedDate(entry.date);
-                  }}
-                />
-              )}
-              {activeTab === 'calendar' && (
-                <CalendarTab
-                  entries={entries}
-                  language={language}
-                  accentColor={config.accentColor}
-                  selectedDate={selectedDate}
-                  onDateSelect={(date) => {
-                    setSelectedDate(date);
-                    setActiveTab('entries');
-                  }}
-                  onNewEntry={(date) => {
-                    setSelectedDate(date);
-                    setShowCreateSheet(true);
-                  }}
-                />
-              )}
-              {activeTab === 'analytics' && (
-                <AnalyticsTab
-                  entries={entries}
-                  language={language}
-                  accentColor={config.accentColor}
-                />
-              )}
-            </AnimatePresence>
+            {/* Tab content — instant switching, no AnimatePresence mode="wait" */}
+            {activeTab === 'entries' && (
+              <EntriesTab
+                entries={entries}
+                isLoading={isLoading}
+                language={language}
+                accentColor={config.accentColor}
+                onEditEntry={(entry) => {
+                  setSelectedDate(entry.date);
+                }}
+              />
+            )}
+            {activeTab === 'calendar' && (
+              <CalendarTab
+                entries={entries}
+                language={language}
+                accentColor={config.accentColor}
+                selectedDate={selectedDate}
+                onDateSelect={(date) => {
+                  setSelectedDate(date);
+                  setActiveTab('entries');
+                }}
+                onNewEntry={(date) => {
+                  setSelectedDate(date);
+                  setShowCreateSheet(true);
+                }}
+              />
+            )}
+            {activeTab === 'analytics' && (
+              <AnalyticsTab
+                entries={entries}
+                language={language}
+                accentColor={config.accentColor}
+              />
+            )}
           </>
         )}
       </div>
@@ -225,11 +241,13 @@ export function DiaryPage() {
 
 function EntriesTab({
   entries,
+  isLoading,
   language,
   accentColor,
   onEditEntry,
 }: {
   entries: DiaryEntry[];
+  isLoading: boolean;
   language: 'en' | 'ru';
   accentColor: string;
   onEditEntry: (entry: DiaryEntry) => void;
@@ -240,12 +258,14 @@ function EntriesTab({
   const today = getTodayString();
   const hasTodayEntry = entries.some((e) => e.date === today);
 
+  if (isLoading && entries.length === 0) {
+    return <InlineSpinner />;
+  }
+
   return (
     <motion.div
-      key="entries"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-3"
     >
       {/* Today's prompt */}
@@ -369,64 +389,56 @@ function EntryCard({
         </div>
 
         {/* Expanded content */}
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-3 pt-3 border-t space-y-3">
-                {entry.title && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {entry.content}
-                  </p>
-                )}
-                {entry.tags && entry.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {entry.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: `${accentColor}12`, color: accentColor }}
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                    className="h-8 gap-1.5 text-xs"
-                  >
-                    <Edit3 className="h-3 w-3" />
-                    {language === 'ru' ? 'Редактировать' : 'Edit'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete();
-                    }}
-                    className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    {language === 'ru' ? 'Удалить' : 'Delete'}
-                  </Button>
+        {isExpanded && (
+          <div className="overflow-hidden">
+            <div className="mt-3 pt-3 border-t space-y-3">
+              {entry.title && (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {entry.content}
+                </p>
+              )}
+              {entry.tags && entry.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {entry.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: `${accentColor}12`, color: accentColor }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  className="h-8 gap-1.5 text-xs"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  {language === 'ru' ? 'Редактировать' : 'Edit'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {language === 'ru' ? 'Удалить' : 'Delete'}
+                </Button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        )}
       </button>
     </motion.div>
   );
@@ -494,10 +506,8 @@ function CalendarTab({
 
   return (
     <motion.div
-      key="calendar"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-4"
     >
       {/* Month navigation */}
@@ -676,10 +686,8 @@ function AnalyticsTab({
 
   return (
     <motion.div
-      key="analytics"
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-4"
     >
       {/* Stats Grid */}
