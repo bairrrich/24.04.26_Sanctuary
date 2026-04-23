@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { ANIMATION } from '@/lib/constants';
 import { getClassName, getClassIcon, getClassesForAttribute, getTierName, getClassById } from '@/lib/class-system';
+import { totalXPForAttributeLevel, xpForAttributeLevel } from '@/lib/xp-engine';
 import { useSettingsStore } from '@/store/settings-store';
 import { useGamificationStore } from '@/store/gamification-store';
 import type { RPGAttribute } from '@/types';
@@ -13,15 +14,6 @@ const ATTRIBUTE_META: Record<RPGAttribute, { icon: string; color: string; bgColo
   intelligence: { icon: '🧠', color: '#6366f1', bgColor: '#eef2ff', nameKey: 'rpg.intelligence' },
   endurance:    { icon: '🛡️', color: '#22c55e', bgColor: '#f0fdf4', nameKey: 'rpg.endurance' },
   charisma:     { icon: '⭐', color: '#ec4899', bgColor: '#fdf2f8', nameKey: 'rpg.charisma' },
-};
-
-// Dark mode bg colors
-const ATTRIBUTE_BG_DARK: Record<RPGAttribute, string> = {
-  strength:     'rgba(239,68,68,0.1)',
-  agility:      'rgba(245,158,11,0.1)',
-  intelligence: 'rgba(99,102,241,0.1)',
-  endurance:    'rgba(34,197,94,0.1)',
-  charisma:     'rgba(236,72,153,0.1)',
 };
 
 export function AttributeDisplay() {
@@ -49,11 +41,11 @@ export function AttributeDisplay() {
             const isDominant = currentClass?.primaryAttribute === attr;
 
             // XP progress within current attribute level
-            const xpForCurrentLevel = totalAttrXP(attrLevel);
-            const xpForNextLevel = totalAttrXP(attrLevel + 1);
+            const xpForCurrentLevel = totalXPForAttributeLevel(attrLevel);
+            const xpForNextLevel = totalXPForAttributeLevel(attrLevel + 1);
             const progressXP = xp - xpForCurrentLevel;
             const neededXP = xpForNextLevel - xpForCurrentLevel;
-            const percentage = Math.min(100, Math.max(0, (progressXP / neededXP) * 100));
+            const percentage = neededXP > 0 ? Math.min(100, Math.max(0, (progressXP / neededXP) * 100)) : 0;
 
             // Class progression for this attribute
             const classLineage = getClassesForAttribute(attr);
@@ -154,12 +146,4 @@ function t_rpg(attr: RPGAttribute, lang: 'en' | 'ru'): string {
     charisma: { en: 'Charisma', ru: 'Харизма' },
   };
   return names[attr][lang];
-}
-
-function totalAttrXP(level: number): number {
-  let total = 0;
-  for (let i = 1; i < level; i++) {
-    total += Math.floor(80 * Math.pow(i, 1.4));
-  }
-  return total;
 }

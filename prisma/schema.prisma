@@ -100,6 +100,145 @@ model CharacterSetupData {
   character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 }
 
+// ==================== Habits Module ====================
+
+model Habit {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String   @default("🎯")
+  color       String   @default("#06b6d4")
+  type        String   @default("positive") // positive, negative
+  frequency   String   @default("daily")    // daily, weekly, custom
+  targetCount Int      @default(1)           // how many times per period
+  sortOrder   Int      @default(0)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  logs        HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  date      String   // YYYY-MM-DD format for easy querying
+  count     Int      @default(1)
+  note      String?
+  createdAt DateTime @default(now())
+
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+}
+
+// ==================== Nutrition Module ====================
+
+model MealEntry {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  mealType    String   // breakfast, lunch, dinner, snack
+  name        String
+  calories    Int      @default(0)
+  protein     Float    @default(0)
+  fat         Float    @default(0)
+  carbs       Float    @default(0)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WaterLog {
+  id        String   @id @default(cuid())
+  date      String   // YYYY-MM-DD
+  amount    Int      @default(250) // ml
+  createdAt DateTime @default(now())
+
+  @@unique([id])
+}
+
+// ==================== Training Module ====================
+
+model Workout {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  name        String
+  duration    Int      @default(0)  // minutes
+  type        String   @default("strength") // strength, cardio, flexibility, other
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exercises   Exercise[]
+}
+
+model Exercise {
+  id         String   @id @default(cuid())
+  workoutId  String
+  name       String
+  sets       Int      @default(0)
+  reps       Int      @default(0)
+  weight     Float    @default(0) // kg
+  duration   Int      @default(0) // seconds (for timed exercises)
+  isPR       Boolean  @default(false) // personal record
+  note       String?
+  sortOrder  Int      @default(0)
+
+  workout    Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+}
+
+// ==================== Finance Module ====================
+
+model Account {
+  id        String   @id @default(cuid())
+  name      String
+  balance   Float    @default(0)
+  currency  String   @default("RUB")
+  icon      String   @default("💰")
+  color     String   @default("#10b981")
+  sortOrder Int      @default(0)
+  isArchived Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  accountId   String
+  amount      Float    // positive = income, negative = expense
+  category    String   @default("other") // food, transport, entertainment, shopping, health, education, salary, other
+  description String?
+  date        String   // YYYY-MM-DD
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  category    String   @unique
+  amount      Float    // monthly budget amount
+  period      String   @default("monthly") // weekly, monthly, yearly
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== Diary Module ====================
+
+model DiaryEntry {
+  id        String   @id @default(cuid())
+  date      String   // YYYY-MM-DD
+  title     String?
+  content   String
+  mood      String?  // great, good, neutral, bad, terrible
+  tags      String?  // JSON: ["tag1", "tag2"]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Keep existing models for future use
 model User {
   id        String   @id @default(cuid())

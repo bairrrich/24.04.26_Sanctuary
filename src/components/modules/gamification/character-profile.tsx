@@ -2,9 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { Edit3 } from 'lucide-react';
-import { getClassIcon, getClassName, getTierName } from '@/lib/class-system';
-import { getXPProgressInLevel, xpForCharacterLevel } from '@/lib/xp-engine';
-import { ANIMATION, RPG } from '@/lib/constants';
+import { getClassIcon, getClassName, getTierName, getClassById } from '@/lib/class-system';
+import { getXPProgressInLevel, getAttributeXPProgress } from '@/lib/xp-engine';
+import { ANIMATION } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { useGamificationStore } from '@/store/gamification-store';
 import type { RPGAttribute } from '@/types';
@@ -173,27 +173,3 @@ function getDominantAttribute(
   }
   return dominant;
 }
-
-// Need to import this
-function getAttributeXPProgress(currentXP: number, currentLevel: number) {
-  const xpForCurrentLevel = totalAttrXP(currentLevel);
-  const xpForNextLevel = totalAttrXP(currentLevel + 1);
-  const current = currentXP - xpForCurrentLevel;
-  const needed = xpForNextLevel - xpForCurrentLevel;
-  return {
-    current: Math.max(0, current),
-    needed,
-    percentage: Math.min(100, Math.max(0, (current / needed) * 100)),
-  };
-}
-
-function totalAttrXP(level: number): number {
-  let total = 0;
-  for (let i = 1; i < level; i++) {
-    total += Math.floor(80 * Math.pow(i, 1.4));
-  }
-  return total;
-}
-
-// Import for class lookup
-import { getClassById } from '@/lib/class-system';

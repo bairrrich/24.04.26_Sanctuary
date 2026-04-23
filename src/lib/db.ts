@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 
+// Singleton Prisma client for database access
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
