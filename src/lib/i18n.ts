@@ -1,0 +1,251 @@
+/**
+ * Internationalization - translations for en/ru
+ */
+import type { AppLanguage } from '@/types';
+
+type TranslationKeys = typeof translations['en'];
+
+const translations = {
+  en: {
+    app: {
+      name: 'Sanctuary',
+      tagline: 'Your all-in-one life management system',
+    },
+    nav: {
+      home: 'Home',
+      finance: 'Finance',
+      nutrition: 'Nutrition',
+      training: 'Training',
+      more: 'More',
+      modules: 'Modules',
+      collapse: 'Collapse',
+    },
+    modules: {
+      feed: 'Feed',
+      diary: 'Diary',
+      shifts: 'Shifts',
+      finance: 'Finance',
+      nutrition: 'Nutrition',
+      training: 'Training',
+      habits: 'Habits',
+      collections: 'Collections',
+      genealogy: 'Genealogy',
+      health: 'Health',
+      calendar: 'Calendar',
+      looksmaxxing: 'Looksmaxxing',
+      gamification: 'Gamification',
+      reminders: 'Reminders',
+      settings: 'Settings',
+    },
+    settings: {
+      title: 'Settings',
+      theme: 'Theme',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'System',
+      themeDescription: 'Choose the appearance of the app',
+      language: 'Language',
+      languageDescription: 'Choose the app interface language',
+      units: 'Units',
+      unitsDescription: 'Configure measurement units for different modules',
+      waterUnit: 'Water',
+      weightUnit: 'Weight',
+      distanceUnit: 'Distance',
+      currency: 'Currency',
+      firstDayOfWeek: 'First day of week',
+      monday: 'Monday',
+      sunday: 'Sunday',
+      data: 'Data Management',
+      dataDescription: 'Manage application data',
+      fillTestData: 'Fill test data',
+      fillTestDataDescription: 'Fill all modules with test data for demonstration',
+      clearTestData: 'Clear test data',
+      clearTestDataDescription: 'Remove all test data from the application',
+      resetSettings: 'Reset to defaults',
+      resetSettingsDescription: 'Reset all settings to default values',
+      about: 'About',
+      version: 'Version',
+      confirmDeletion: 'Confirm deletion',
+      deletionWarning: 'This action will delete all test data and cannot be undone.',
+      resetConfirm: 'Reset settings?',
+      resetWarning: 'All settings will be restored to default values.',
+    },
+    units: {
+      ml: 'Milliliters (ml)',
+      fl_oz: 'Fluid ounces (fl oz)',
+      kg: 'Kilograms (kg)',
+      lbs: 'Pounds (lbs)',
+      km: 'Kilometers (km)',
+      mi: 'Miles (mi)',
+      RUB: 'Russian Ruble (₽)',
+      USD: 'US Dollar ($)',
+      EUR: 'Euro (€)',
+      GBP: 'Pound Sterling (£)',
+      JPY: 'Japanese Yen (¥)',
+      CNY: 'Chinese Yuan (¥)',
+    },
+    common: {
+      search: 'Search...',
+      filter: 'Filter',
+      add: 'Add',
+      edit: 'Edit',
+      delete: 'Delete',
+      save: 'Save',
+      cancel: 'Cancel',
+      confirm: 'Confirm',
+      close: 'Close',
+      analytics: 'Analytics',
+      week: 'Week',
+      month: 'Month',
+      year: 'Year',
+      noData: 'No data yet',
+      noDataDescription: 'Start adding items to see them here',
+      comingSoon: 'Coming soon',
+      comingSoonDescription: 'This module is under development',
+    },
+    rpg: {
+      strength: 'Strength',
+      agility: 'Agility',
+      intelligence: 'Intelligence',
+      endurance: 'Endurance',
+      charisma: 'Charisma',
+      level: 'Level',
+      xp: 'XP',
+    },
+  },
+  ru: {
+    app: {
+      name: 'Sanctuary',
+      tagline: 'Ваша универсальная система управления жизнью',
+    },
+    nav: {
+      home: 'Главная',
+      finance: 'Финансы',
+      nutrition: 'Питание',
+      training: 'Тренировки',
+      more: 'Ещё',
+      modules: 'Модули',
+      collapse: 'Свернуть',
+    },
+    modules: {
+      feed: 'Лента',
+      diary: 'Дневник',
+      shifts: 'График смен',
+      finance: 'Финансы',
+      nutrition: 'Питание',
+      training: 'Тренировки',
+      habits: 'Привычки',
+      collections: 'Коллекции',
+      genealogy: 'Генеалогия',
+      health: 'Здоровье',
+      calendar: 'Календарь',
+      looksmaxxing: 'Луксмаксинг',
+      gamification: 'Геймификация',
+      reminders: 'Напоминания',
+      settings: 'Настройки',
+    },
+    settings: {
+      title: 'Настройки',
+      theme: 'Тема',
+      themeLight: 'Светлая',
+      themeDark: 'Тёмная',
+      themeSystem: 'Системная',
+      themeDescription: 'Выберите внешний вид приложения',
+      language: 'Язык',
+      languageDescription: 'Выберите язык интерфейса приложения',
+      units: 'Единицы измерения',
+      unitsDescription: 'Настройте единицы измерения для разных модулей',
+      waterUnit: 'Вода',
+      weightUnit: 'Вес',
+      distanceUnit: 'Расстояние',
+      currency: 'Валюта',
+      firstDayOfWeek: 'Первый день недели',
+      monday: 'Понедельник',
+      sunday: 'Воскресенье',
+      data: 'Управление данными',
+      dataDescription: 'Управление данными приложения',
+      fillTestData: 'Заполнить тестовыми данными',
+      fillTestDataDescription: 'Заполнить все модули тестовыми данными для демонстрации',
+      clearTestData: 'Очистить тестовые данные',
+      clearTestDataDescription: 'Удалить все тестовые данные из приложения',
+      resetSettings: 'Сбросить настройки',
+      resetSettingsDescription: 'Сбросить все настройки к значениям по умолчанию',
+      about: 'О приложении',
+      version: 'Версия',
+      confirmDeletion: 'Подтвердите удаление',
+      deletionWarning: 'Это действие удалит все тестовые данные и не может быть отменено.',
+      resetConfirm: 'Сбросить настройки?',
+      resetWarning: 'Все настройки будут возвращены к значениям по умолчанию.',
+    },
+    units: {
+      ml: 'Миллилитры (мл)',
+      fl_oz: 'Унции (fl oz)',
+      kg: 'Килограммы (кг)',
+      lbs: 'Фунты (lbs)',
+      km: 'Километры (км)',
+      mi: 'Мили (mi)',
+      RUB: 'Российский рубль (₽)',
+      USD: 'Доллар США ($)',
+      EUR: 'Евро (€)',
+      GBP: 'Фунт стерлингов (£)',
+      JPY: 'Иена (¥)',
+      CNY: 'Юань (¥)',
+    },
+    common: {
+      search: 'Поиск...',
+      filter: 'Фильтр',
+      add: 'Добавить',
+      edit: 'Редактировать',
+      delete: 'Удалить',
+      save: 'Сохранить',
+      cancel: 'Отмена',
+      confirm: 'Подтвердить',
+      close: 'Закрыть',
+      analytics: 'Аналитика',
+      week: 'Неделя',
+      month: 'Месяц',
+      year: 'Год',
+      noData: 'Пока нет данных',
+      noDataDescription: 'Добавьте элементы, чтобы увидеть их здесь',
+      comingSoon: 'Скоро будет',
+      comingSoonDescription: 'Этот модуль находится в разработке',
+    },
+    rpg: {
+      strength: 'Сила',
+      agility: 'Ловкость',
+      intelligence: 'Интеллект',
+      endurance: 'Выносливость',
+      charisma: 'Харизма',
+      level: 'Уровень',
+      xp: 'Опыт',
+    },
+  },
+} as const;
+
+export function t(lang: AppLanguage, path: string): string {
+  const keys = path.split('.');
+  let current: unknown = translations[lang];
+  for (const key of keys) {
+    if (current && typeof current === 'object' && key in current) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      // Fallback to English
+      let fallback: unknown = translations.en;
+      for (const fk of keys) {
+        if (fallback && typeof fallback === 'object' && fk in fallback) {
+          fallback = (fallback as Record<string, unknown>)[fk];
+        } else {
+          return path;
+        }
+      }
+      return fallback as string;
+    }
+  }
+  return (current as string) || path;
+}
+
+export function useTranslation() {
+  // This will be used as a hook that reads language from settings store
+  // Import and use in components
+  return { t };
+}
