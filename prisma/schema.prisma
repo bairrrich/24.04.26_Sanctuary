@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== Gamification System ====================
+
+model Character {
+  id              String   @id @default(cuid())
+  name            String
+  avatar          String?
+  level           Int      @default(1)
+  totalXP         Int      @default(0)
+  currentClassId  String   @default("novice")
+  isSetupComplete Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  attributes     CharacterAttribute[]
+  xpEvents       XPEvent[]
+  achievements   UserAchievement[]
+  questProgress  UserQuest[]
+  setupData      CharacterSetupData?
+}
+
+model CharacterAttribute {
+  id          String   @id @default(cuid())
+  characterId String
+  attribute   String   // strength, agility, intelligence, endurance, charisma
+  xp          Int      @default(0)
+  level       Int      @default(1)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, attribute])
+}
+
+model XPEvent {
+  id          String   @id @default(cuid())
+  characterId String
+  module      String   // source module: habits, nutrition, training, etc.
+  action      String   // specific action: habit_complete, workout_done, etc.
+  attribute   String   // which RPG attribute gets XP
+  amount      Int      // XP amount
+  metadata    String?  // JSON string for additional data
+  createdAt   DateTime @default(now())
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  characterId   String
+  achievementId String   // reference to achievement definition
+  unlockedAt    DateTime @default(now())
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, achievementId])
+}
+
+model UserQuest {
+  id          String    @id @default(cuid())
+  characterId String
+  questId     String    // reference to quest definition
+  status      String    @default("active") // active, completed, failed, expired
+  progress    Int       @default(0)
+  target      Int
+  completedAt DateTime?
+  expiresAt   DateTime?
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, questId])
+}
+
+model CharacterSetupData {
+  id              String   @id @default(cuid())
+  characterId     String   @unique
+  // Physical params (for training module)
+  height          Float?
+  weight          Float?
+  age             Int?
+  gender          String?
+  // Finance (initial accounts)
+  initialAccounts String?  // JSON: [{name, balance, currency}]
+  // Nutrition goals
+  dailyCalories   Int?
+  dailyProtein    Int?
+  dailyFat        Int?
+  dailyCarbs      Int?
+  dailyWater      Int?     // in ml
+  // Training level
+  fitnessLevel    String?  // beginner, intermediate, advanced
+  // Habits
+  targetSleepHours Float?
+  targetWakeTime   String?
+  // Preferences
+  focusAreas      String?  // JSON: ["strength", "endurance"]
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+// Keep existing models for future use
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

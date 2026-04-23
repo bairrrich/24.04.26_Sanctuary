@@ -161,3 +161,52 @@ Stage Summary:
 - Application is functional and ready for module-by-module development
 - All foundation is in place for future module development
 - Next priority: Implement individual modules one by one starting with the next requested module
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Implement Gamification Module (RPG System)
+
+Work Log:
+- Updated `prisma/schema.prisma` with gamification models: Character, CharacterAttribute, XPEvent, UserAchievement, UserQuest, CharacterSetupData
+- Ran `db:push` to sync database
+- Created `/src/lib/xp-engine.ts` with:
+  - XP_RULES for all 12 modules with 50+ action definitions
+  - Level formulas (characterLevelFromXP, attributeLevelFromXP)
+  - XP progress calculators (getXPProgressInLevel, getAttributeXPProgress)
+  - emitXP calculation logic
+- Created `/src/lib/class-system.ts` with:
+  - 21 character classes across 5 tiers (Novice → Specialist → Expert → Master → Legend)
+  - 10 hybrid classes for dual-attribute builds
+  - Modern class names: Атлет, Стратег, Страж, Первооткрыватель, Лидер, Чемпион, etc.
+  - Auto-assignment algorithm based on dominant attribute + hybrid detection
+  - Evolution paths: getNextEvolution, getClassesForAttribute
+- Created `/src/store/gamification-store.ts` with Zustand store
+- Created API routes:
+  - GET/POST `/api/gamification/character` — character CRUD
+  - POST `/api/gamification/emit-xp` — award XP and recalculate levels/class
+  - POST `/api/gamification/setup` — save setup data
+  - POST `/api/gamification/setup/complete` — mark setup as complete
+- Created UI components:
+  - `character-profile.tsx` — avatar, name, class, level progress, attribute grid
+  - `attribute-display.tsx` — 5 attributes with XP bars and class lineage
+  - `class-display.tsx` — current class card, hybrid class, next evolution
+  - `xp-event-log.tsx` — recent XP events with module/attribute indicators
+  - `achievements-tab.tsx` — 16 achievement definitions (all locked initially)
+  - `character-setup.tsx` — 6-step wizard (Name, Physical, Nutrition, Training, Habits, Focus)
+  - `gamification-page.tsx` — main page with tabs (Profile, Attributes, Class, Achievements, Activity)
+- Updated i18n with 30+ new RPG-related translation keys in both en/ru
+- Fixed bugs found during testing:
+  - 409 Conflict handling in createCharacter (character already exists)
+  - Focus areas default changed from pre-populated to empty
+  - canProceed validation on focus step
+
+Stage Summary:
+- Gamification module is FULLY FUNCTIONAL
+- Character creation wizard works (6 steps)
+- XP engine ready for cross-module integration (emitXP API)
+- Class system auto-assigns based on behavior
+- 21 classes + 10 hybrids with modern lifestyle archetype names
+- 5-tier progression: Новичок → Специалист → Эксперт → Мастер → Легенда
+- All API endpoints verified working with Prisma
+- Next priority: Implement Habits module to test XP integration
