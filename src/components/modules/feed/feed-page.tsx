@@ -28,14 +28,21 @@ export function FeedPage() {
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
-  const doneCount = [checklist.feedNote, checklist.firstWorkout, checklist.firstExpense].filter(Boolean).length;
-  const checklistCompleted = doneCount === 3;
+  const activationDoneCount = [checklist.feedNote, checklist.firstWorkout, checklist.firstExpense].filter(Boolean).length;
+  const isActivationChecklistComplete = activationDoneCount === 3;
 
   const triggerFab = () => {
     requestAnimationFrame(() => {
       const fab = document.querySelector<HTMLButtonElement>('[data-fab="true"]');
       fab?.click();
     });
+  };
+
+
+  const handleChecklistModuleAction = (checklistKey: 'firstWorkout' | 'firstExpense', moduleId: 'training' | 'finance') => {
+    markChecklistDone(checklistKey);
+    setActiveModule(moduleId);
+    triggerFab();
   };
 
   const handleAdd = async () => {
@@ -69,20 +76,12 @@ export function FeedPage() {
       <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-3`}>
         <TodayFocusCard
           language={language}
-          doneCount={doneCount}
-          checklistCompleted={checklistCompleted}
+          doneCount={activationDoneCount}
+          checklistCompleted={isActivationChecklistComplete}
           checklistDismissed={checklistDismissed}
           onQuickNote={triggerFab}
-          onWorkout={() => {
-            markChecklistDone('firstWorkout');
-            setActiveModule('training');
-            triggerFab();
-          }}
-          onExpense={() => {
-            markChecklistDone('firstExpense');
-            setActiveModule('finance');
-            triggerFab();
-          }}
+          onWorkout={() => handleChecklistModuleAction('firstWorkout', 'training')}
+          onExpense={() => handleChecklistModuleAction('firstExpense', 'finance')}
           onDismissChecklist={dismissChecklist}
           onResetChecklist={resetChecklist}
         />

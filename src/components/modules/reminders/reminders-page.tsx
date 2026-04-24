@@ -8,10 +8,10 @@ import { SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { useRemindersStore, type ReminderItem } from '@/store/reminders-store';
 import type { TabItem } from '@/types';
-import { PRESETS, type ReminderFormValues } from './constants';
-import { ReminderCard } from './components/reminder-card';
+import { PRESETS as REMINDER_PRESETS, type ReminderFormValues } from './constants';
 import { ReminderFormSheet } from './components/reminder-form-sheet';
-import { defaultReminderForm, formatISODate, getQuickDate, getTodayISO, parseNaturalInput } from './utils';
+import { ReminderList } from './components/reminder-list';
+import { defaultReminderForm, formatISODate as toISODate, getQuickDate, getTodayISO as getTodayISODate, parseNaturalInput as parseReminderInput } from './utils';
 
 export function RemindersPage() {
   const language = useSettingsStore((s) => s.language);
@@ -25,7 +25,7 @@ export function RemindersPage() {
 
   useEffect(() => { loadReminders(true); }, [loadReminders]);
 
-  const today = getTodayISO();
+  const today = getTodayISODate();
   const todayReminders = reminders.filter((r) => r.date === today && !r.isCompleted);
   const upcomingReminders = reminders.filter((r) => r.date > today && !r.isCompleted).sort((a, b) => a.date.localeCompare(b.date));
   const overdueReminders = reminders.filter((r) => r.date < today && !r.isCompleted).sort((a, b) => a.date.localeCompare(b.date));
@@ -59,7 +59,7 @@ export function RemindersPage() {
   };
 
   const handleTitleChange = (value: string) => {
-    const parsed = parseNaturalInput(value, new Date());
+    const parsed = parseReminderInput(value, new Date());
     if (!parsed) {
       setParseHint('');
       setForm((prev) => ({ ...prev, title: value }));
@@ -76,7 +76,7 @@ export function RemindersPage() {
   };
 
   const handlePreset = (presetKey: string) => {
-    const preset = PRESETS.find((item) => item.key === presetKey);
+    const preset = REMINDER_PRESETS.find((item) => item.key === presetKey);
     if (!preset) return;
     setForm((prev) => ({
       ...prev,
@@ -89,7 +89,7 @@ export function RemindersPage() {
   const reschedulePlusOneDay = async (reminder: ReminderItem) => {
     const nextDate = new Date(reminder.date);
     nextDate.setDate(nextDate.getDate() + 1);
-    await updateReminder(reminder.id, { date: formatISODate(nextDate) });
+    await updateReminder(reminder.id, { date: toISODate(nextDate) });
   };
 
   return (
@@ -100,7 +100,15 @@ export function RemindersPage() {
         {overdueReminders.length > 0 && (
           <div className="space-y-2 rounded-xl border border-red-200 bg-red-500/5 p-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-red-600"><AlertTriangle className="h-3.5 w-3.5" />{language === 'ru' ? 'Просрочено' : 'Overdue'} ({overdueReminders.length})</div>
-            {overdueReminders.map((r) => <ReminderCard key={r.id} reminder={r} language={language} isOverdue onComplete={completeReminder} onDelete={deleteReminder} onReschedule={reschedulePlusOneDay} />)}
+            <ReminderList
+              reminders={overdueReminders}
+              language={language}
+              emptyMessage={language === 'ru' ? 'Нет просроченных' : 'No overdue reminders'}
+              isOverdue
+              onComplete={completeReminder}
+              onDelete={deleteReminder}
+              onReschedule={reschedulePlusOneDay}
+            />
           </div>
         )}
 
@@ -108,9 +116,20 @@ export function RemindersPage() {
 
         {activeTab === 'today' && (
           <div className="space-y-2">
-            {todayReminders.length === 0
-              ? <div className="py-8 text-center"><span className="text-3xl">🎉</span><p className="mt-2 text-sm text-muted-foreground">{language === 'ru' ? 'Нет напоминаний на сегодня' : 'No reminders today'}</p></div>
-              : todayReminders.map((r) => <ReminderCard key={r.id} reminder={r} language={language} onComplete={completeReminder} onDelete={deleteReminder} />)}
+            {todayReminders.length === 0 ? (
+              <div className="py-8 text-center">
+                <span className="text-3xl">🎉</span>
+                <p className="mt-2 text-sm text-muted-foreground">{language === 'ru' ? 'Нет напоминаний на сегодня' : 'No reminders today'}</p>
+              </div>
+            ) : (
+              <ReminderList
+                reminders={todayReminders}
+                language={language}
+                emptyMessage={language === 'ru' ? 'Нет напоминаний на сегодня' : 'No reminders today'}
+                onComplete={completeReminder}
+                onDelete={deleteReminder}
+              />
+            )}
           </div>
         )}
 
@@ -121,7 +140,13 @@ export function RemindersPage() {
               : Object.entries(groupedUpcoming).map(([date, items]) => (
                 <div key={date} className="space-y-2">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{new Date(date).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h4>
-                  {items.map((r) => <ReminderCard key={r.id} reminder={r} language={language} onComplete={completeReminder} onDelete={deleteReminder} />)}
+                  <ReminderList
+                    reminders={items}
+                    language={language}
+                    emptyMessage={language === 'ru' ? 'Нет предстоящих напоминаний' : 'No upcoming reminders'}
+                    onComplete={completeReminder}
+                    onDelete={deleteReminder}
+                  />
                 </div>
               ))}
           </div>
@@ -129,9 +154,13 @@ export function RemindersPage() {
 
         {activeTab === 'completed' && (
           <div className="space-y-2">
-            {completedReminders.length === 0
-              ? <p className="py-4 text-center text-sm text-muted-foreground">{language === 'ru' ? 'Нет завершённых' : 'No completed reminders'}</p>
-              : completedReminders.map((r) => <ReminderCard key={r.id} reminder={r} language={language} onComplete={completeReminder} onDelete={deleteReminder} />)}
+            <ReminderList
+              reminders={completedReminders}
+              language={language}
+              emptyMessage={language === 'ru' ? 'Нет завершённых' : 'No completed reminders'}
+              onComplete={completeReminder}
+              onDelete={deleteReminder}
+            />
           </div>
         )}
       </div>
