@@ -23,6 +23,7 @@ import { LooksmaxxingPage } from '@/components/modules/looksmaxxing/looksmaxxing
 import { GamificationPage } from '@/components/modules/gamification/gamification-page';
 import { RemindersPage } from '@/components/modules/reminders/reminders-page';
 import { SettingsPage } from '@/components/modules/settings/settings-page';
+import { XPNotification } from '@/components/shared/xp-notification';
 import type { ModuleId } from '@/types';
 
 const MODULE_COMPONENTS: Record<ModuleId, React.ComponentType> = {
@@ -81,6 +82,9 @@ export function AppShell() {
         activeModule={activeModule}
         onModuleSelect={setActiveModule}
       />
+
+      {/* XP Notification Overlay */}
+      <XPNotification />
     </div>
   );
 }

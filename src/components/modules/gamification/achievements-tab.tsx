@@ -1,43 +1,69 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Lock } from 'lucide-react';
+import { Lock, Trophy, CheckCircle2 } from 'lucide-react';
 import { ANIMATION } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
-import { useGamificationStore } from '@/store/gamification-store';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
-/** Achievement definitions — will expand as modules are built */
-const ACHIEVEMENT_DEFINITIONS = [
-  // General
-  { id: 'first_xp', icon: '🌟', nameRu: 'Первые шаги', nameEn: 'First Steps', descRu: 'Получите первый опыт', descEn: 'Earn your first XP', category: 'general' },
-  { id: 'level_5', icon: '📈', nameRu: 'Специализация', nameEn: 'Specialization', descRu: 'Достигните 5 уровня', descEn: 'Reach level 5', category: 'general' },
-  { id: 'level_10', icon: '🚀', nameRu: 'Эксперт', nameEn: 'Expert', descRu: 'Достигните 10 уровня', descEn: 'Reach level 10', category: 'general' },
-  { id: 'level_20', icon: '💎', nameRu: 'Мастер', nameEn: 'Master', descRu: 'Достигните 20 уровня', descEn: 'Reach level 20', category: 'general' },
-  { id: 'level_30', icon: '👑', nameRu: 'Легенда', nameEn: 'Legend', descRu: 'Достигните 30 уровня', descEn: 'Reach level 30', category: 'general' },
-  { id: 'all_attrs_5', icon: '⚖️', nameRu: 'Баланс', nameEn: 'Balance', descRu: 'Все характеристики уровня 5+', descEn: 'All attributes level 5+', category: 'general' },
-  { id: 'xp_1000', icon: '💯', nameRu: 'Тысячник', nameEn: 'Thousandaire', descRu: 'Наберите 1000 XP', descEn: 'Earn 1000 XP', category: 'general' },
-  { id: 'xp_10000', icon: '🔥', nameRu: 'Десятитысячник', nameEn: 'Ten K', descRu: 'Наберите 10000 XP', descEn: 'Earn 10000 XP', category: 'general' },
+// ==================== Types ====================
 
-  // Strength
-  { id: 'first_workout', icon: '💪', nameRu: 'Первый подход', nameEn: 'First Set', descRu: 'Завершите первую тренировку', descEn: 'Complete your first workout', category: 'strength' },
-  { id: 'strength_10', icon: '🏋️', nameRu: 'Качок', nameEn: 'Swoldier', descRu: 'Сила уровня 10', descEn: 'Strength level 10', category: 'strength' },
+interface AchievementItem {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+  descriptionEn: string;
+  descriptionRu: string;
+  icon: string;
+  isUnlocked: boolean;
+  unlockedAt: string | null;
+}
 
-  // Endurance
-  { id: 'first_meal', icon: '🥗', nameRu: 'Первый приём', nameEn: 'First Meal', descRu: 'Запишите первый приём пищи', descEn: 'Log your first meal', category: 'endurance' },
-  { id: 'endurance_10', icon: '🛡️', nameRu: 'Стойкий', nameEn: 'Resilient', descRu: 'Выносливость уровня 10', descEn: 'Endurance level 10', category: 'endurance' },
+interface AchievementStats {
+  total: number;
+  unlocked: number;
+  percentage: number;
+}
 
-  // Intelligence
-  { id: 'first_transaction', icon: '💰', nameRu: 'Первая запись', nameEn: 'First Entry', descRu: 'Запишите первую транзакцию', descEn: 'Log your first transaction', category: 'intelligence' },
-  { id: 'intelligence_10', icon: '🧠', nameRu: 'Мыслитель', nameEn: 'Thinker', descRu: 'Интеллект уровня 10', descEn: 'Intelligence level 10', category: 'intelligence' },
+// ==================== Category Mapping ====================
 
-  // Agility
-  { id: 'first_habit', icon: '🎯', nameRu: 'Первый шаг', nameEn: 'First Step', descRu: 'Выполните первую привычку', descEn: 'Complete your first habit', category: 'agility' },
-  { id: 'agility_10', icon: '⚡', nameRu: 'Быстрый', nameEn: 'Swift', descRu: 'Ловкость уровня 10', descEn: 'Agility level 10', category: 'agility' },
-
-  // Charisma
-  { id: 'first_diary', icon: '✍️', nameRu: 'Первая мысль', nameEn: 'First Thought', descRu: 'Сделайте первую запись в дневнике', descEn: 'Write your first diary entry', category: 'charisma' },
-  { id: 'charisma_10', icon: '⭐', nameRu: 'Оратор', nameEn: 'Speaker', descRu: 'Харизма уровня 10', descEn: 'Charisma level 10', category: 'charisma' },
-];
+const ACHIEVEMENT_CATEGORIES: Record<string, string> = {
+  // Training → strength
+  first_workout: 'strength',
+  week_warrior: 'strength',
+  iron_will: 'strength',
+  centurion: 'strength',
+  // Habits → agility
+  habit_starter: 'agility',
+  habit_master: 'agility',
+  streak_master: 'agility',
+  streak_legend: 'agility',
+  // Diary → charisma
+  first_entry: 'charisma',
+  storyteller: 'charisma',
+  chronicler: 'charisma',
+  // Finance → intelligence
+  budget_boss: 'intelligence',
+  accountant: 'intelligence',
+  wealth_manager: 'intelligence',
+  // Level → general
+  level_5: 'general',
+  level_10: 'general',
+  level_20: 'general',
+  level_30: 'general',
+  // XP → general
+  xp_century: 'general',
+  xp_millennium: 'general',
+  xp_titan: 'general',
+  // Attributes → their own category
+  strength_10: 'strength',
+  agility_10: 'agility',
+  intelligence_10: 'intelligence',
+  endurance_10: 'endurance',
+  charisma_10: 'charisma',
+};
 
 const CATEGORY_COLORS: Record<string, string> = {
   general: '#6366f1',
@@ -48,41 +74,206 @@ const CATEGORY_COLORS: Record<string, string> = {
   charisma: '#ec4899',
 };
 
+const CATEGORY_LABELS: Record<string, { en: string; ru: string }> = {
+  general: { en: 'General', ru: 'Общие' },
+  strength: { en: 'Strength', ru: 'Сила' },
+  endurance: { en: 'Endurance', ru: 'Выносливость' },
+  intelligence: { en: 'Intelligence', ru: 'Интеллект' },
+  agility: { en: 'Agility', ru: 'Ловкость' },
+  charisma: { en: 'Charisma', ru: 'Харизма' },
+};
+
+const CATEGORY_ORDER = ['general', 'strength', 'agility', 'intelligence', 'endurance', 'charisma'];
+
+// ==================== Helpers ====================
+
+function getCategoryForAchievement(id: string): string {
+  return ACHIEVEMENT_CATEGORIES[id] ?? 'general';
+}
+
+function formatDate(dateStr: string, language: 'en' | 'ru'): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+}
+
+// ==================== Component ====================
+
 export function AchievementsTab() {
   const language = useSettingsStore((s) => s.language);
+  const [achievements, setAchievements] = useState<AchievementItem[]>([]);
+  const [stats, setStats] = useState<AchievementStats>({ total: 0, unlocked: 0, percentage: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchAchievements = useCallback(async () => {
+    try {
+      const res = await fetch('/api/gamification/achievements');
+      if (res.ok) {
+        const data = await res.json();
+        setAchievements(data.achievements ?? []);
+        setStats(data.stats ?? { total: 0, unlocked: 0, percentage: 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAchievements();
+  }, [fetchAchievements]);
+
+  // Listen for gamification updates to refresh achievements
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchAchievements();
+    };
+    window.addEventListener('gamification:updated', handleUpdate);
+    return () => window.removeEventListener('gamification:updated', handleUpdate);
+  }, [fetchAchievements]);
+
+  // Group achievements by category
+  const grouped = CATEGORY_ORDER.map((category) => {
+    const items = achievements
+      .filter((a) => getCategoryForAchievement(a.id) === category)
+      // Unlocked first, then locked
+      .sort((a, b) => {
+        if (a.isUnlocked !== b.isUnlocked) return a.isUnlocked ? -1 : 1;
+        return 0;
+      });
+    return { category, items };
+  }).filter((g) => g.items.length > 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <motion.div
       initial={ANIMATION.PAGE_TRANSITION.initial}
       animate={ANIMATION.PAGE_TRANSITION.animate}
-      className="space-y-4"
+      className="space-y-5"
     >
-      <h3 className="text-sm font-semibold">
-        {language === 'ru' ? 'Достижения' : 'Achievements'}
-      </h3>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {ACHIEVEMENT_DEFINITIONS.map((achievement, i) => (
-          <motion.div
-            key={achievement.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.03, ...ANIMATION.SPRING_GENTLE }}
-            className="flex flex-col items-center gap-1.5 rounded-xl border bg-card p-3 opacity-40 hover:opacity-60 transition-opacity cursor-default"
+      {/* Progress Stats */}
+      <Card className="p-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ backgroundColor: `${CATEGORY_COLORS.general}20` }}
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-lg grayscale">
-              {achievement.icon}
+            <Trophy className="h-5 w-5" style={{ color: CATEGORY_COLORS.general }} />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">
+                {language === 'ru' ? 'Прогресс достижений' : 'Achievement Progress'}
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                {stats.unlocked}/{stats.total} {language === 'ru' ? 'открыто' : 'unlocked'}
+              </Badge>
             </div>
-            <span className="text-[10px] font-medium text-center leading-tight">
-              {language === 'ru' ? achievement.nameRu : achievement.nameEn}
+            <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: CATEGORY_COLORS.general }}
+                initial={{ width: 0 }}
+                animate={{ width: `${stats.percentage}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground mt-1 block">
+              {stats.percentage}% {language === 'ru' ? 'завершено' : 'complete'}
             </span>
-            <span className="text-[9px] text-muted-foreground text-center leading-tight">
-              {language === 'ru' ? achievement.descRu : achievement.descEn}
-            </span>
-            <Lock className="h-3 w-3 text-muted-foreground" />
-          </motion.div>
-        ))}
-      </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Category Groups */}
+      {grouped.map(({ category, items }) => {
+        const color = CATEGORY_COLORS[category];
+        const label = CATEGORY_LABELS[category];
+        const unlockedCount = items.filter((a) => a.isUnlocked).length;
+
+        return (
+          <div key={category} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {language === 'ru' ? label.ru : label.en}
+              </h4>
+              <span className="text-[10px] text-muted-foreground">
+                {unlockedCount}/{items.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {items.map((achievement, i) => (
+                <motion.div
+                  key={achievement.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.03, ...ANIMATION.SPRING_GENTLE }}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border bg-card p-3 transition-opacity ${
+                    achievement.isUnlocked
+                      ? 'opacity-100 cursor-default'
+                      : 'opacity-40 hover:opacity-60 cursor-default'
+                  }`}
+                >
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg ${
+                      achievement.isUnlocked ? '' : 'grayscale bg-muted'
+                    }`}
+                    style={
+                      achievement.isUnlocked
+                        ? { backgroundColor: `${color}20` }
+                        : undefined
+                    }
+                  >
+                    {achievement.icon}
+                  </div>
+                  <span className="text-[10px] font-medium text-center leading-tight">
+                    {language === 'ru' ? achievement.nameRu : achievement.nameEn}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground text-center leading-tight">
+                    {language === 'ru' ? achievement.descriptionRu : achievement.descriptionEn}
+                  </span>
+
+                  {achievement.isUnlocked ? (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <CheckCircle2
+                        className="h-3 w-3"
+                        style={{ color }}
+                      />
+                      {achievement.unlockedAt && (
+                        <span className="text-[8px] text-muted-foreground">
+                          {formatDate(achievement.unlockedAt, language)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <Lock className="h-3 w-3 text-muted-foreground mt-0.5" />
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </motion.div>
   );
 }

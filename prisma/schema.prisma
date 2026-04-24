@@ -239,6 +239,212 @@ model DiaryEntry {
   updatedAt DateTime @updatedAt
 }
 
+// ==================== Health Module ====================
+
+model BodyMeasurement {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  weight      Float?   // kg
+  height      Float?   // cm
+  waist       Float?   // cm
+  chest       Float?   // cm
+  hips        Float?   // cm
+  bicep       Float?   // cm
+  thigh       Float?   // cm
+  neck        Float?   // cm
+  bodyFat     Float?   // percentage
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WellbeingLog {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  mood        String?  // great, good, neutral, bad, terrible
+  energy      Int?     // 1-10 scale
+  sleepHours  Float?   // hours
+  sleepQuality Int?    // 1-5 scale
+  stress      Int?     // 1-10 scale
+  symptoms    String?  // JSON: ["headache", "fatigue", ...]
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HealthGoal {
+  id          String   @id @default(cuid())
+  type        String   // weight, body_fat, waist, sleep, energy, etc.
+  targetValue Float
+  currentValue Float?
+  deadline    String?  // YYYY-MM-DD
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== Calendar Module ====================
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        String   // YYYY-MM-DD
+  timeStart   String?  // HH:mm
+  timeEnd     String?  // HH:mm
+  type        String   @default("personal") // personal, work, health, social, finance, training, other
+  location    String?
+  isRecurring Boolean  @default(false)
+  recurRule   String?  // JSON: { freq: "weekly", days: ["mon", "wed"] }
+  isCompleted Boolean  @default(false)
+  color       String?  // hex color for display
+  reminderAt  DateTime? // when to remind
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== Looksmaxxing Module ====================
+
+model Routine {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String   @default("skincare") // skincare, grooming, style, fitness, nutrition, posture, other
+  icon        String   @default("✨")
+  frequency   String   @default("daily") // daily, weekly, custom
+  steps       String?  // JSON: ["Step 1", "Step 2", ...]
+  sortOrder   Int      @default(0)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  logs        RoutineLog[]
+}
+
+model RoutineLog {
+  id          String   @id @default(cuid())
+  routineId   String
+  date        String   // YYYY-MM-DD
+  completedSteps Int?  // how many steps completed
+  rating      Int?     // 1-5 self-rating
+  note        String?
+  photoUrl    String?  // progress photo reference
+  createdAt   DateTime @default(now())
+
+  routine     Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@unique([routineId, date])
+}
+
+model ProgressPhoto {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  category    String   @default("face") // face, body, style, other
+  note        String?
+  photoData   String?  // base64 or URL placeholder
+  rating      Int?     // 1-10 self-rating
+  createdAt   DateTime @default(now())
+}
+
+// ==================== Shifts Module ====================
+
+model Shift {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  timeStart   String   // HH:mm
+  timeEnd     String   // HH:mm
+  type        String   @default("regular") // regular, overtime, holiday, sick, vacation
+  role        String?  // job title/role
+  location    String?
+  note        String?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== Feed Module ====================
+
+model FeedPost {
+  id        String   @id @default(cuid())
+  content   String
+  mood      String?  // great, good, neutral, bad
+  tags      String?  // JSON
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== Collections Module ====================
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String   @default("📁")
+  color       String   @default("#6366f1")
+  type        String   @default("general") // books, movies, games, music, recipes, general
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       CollectionItem[]
+}
+
+model CollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  name         String
+  description  String?
+  rating       Int?     // 1-5
+  status       String   @default("planned") // planned, in_progress, completed
+  review       String?
+  tags         String?  // JSON
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+}
+
+// ==================== Reminders Module ====================
+
+model Reminder {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        String   // YYYY-MM-DD
+  time        String?  // HH:mm
+  isCompleted Boolean  @default(false)
+  isRecurring Boolean  @default(false)
+  recurRule   String?  // JSON
+  priority    String   @default("normal") // low, normal, high, urgent
+  category    String   @default("general") // general, health, finance, work, personal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== Genealogy Module ====================
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  name      String
+  relation  String   // mother, father, sister, brother, spouse, child, grandparent, other
+  birthDate String?
+  photoUrl  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FamilyEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        String
+  type        String   @default("other") // birthday, anniversary, holiday, reunion, other
+  memberId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // Keep existing models for future use
 model User {
   id        String   @id @default(cuid())

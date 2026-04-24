@@ -8,3 +8,4 @@ export { EmptyState } from './empty-state';
 export { FAB } from './fab';
 export { IconColorPicker, ICON_PRESETS, COLOR_PRESETS } from './icon-color-picker';
 export { DateTimePicker } from './date-time-picker';
+export { XPNotification } from './xp-notification';

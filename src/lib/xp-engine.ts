@@ -89,6 +89,9 @@ export const XP_RULES: Record<string, Record<ModuleAction, XPRule>> = {
     event_create: { attribute: 'intelligence', baseXP: 3, description: 'Событие создано' },
     event_attend: { attribute: 'charisma', baseXP: 5, description: 'Событие посещено' },
   },
+  reminders: {
+    reminder_complete: { attribute: 'agility', baseXP: 3, description: 'Напоминание выполнено' },
+  },
   quests: {
     quest_complete: { attribute: 'intelligence', baseXP: 20, description: 'Квест завершён' },
     quiz_correct: { attribute: 'intelligence', baseXP: 10, description: 'Правильный ответ в викторине' },

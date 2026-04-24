@@ -239,7 +239,7 @@ Stage Summary:
 ---
 ## Current Project Status
 
-**7 modules fully functional with XP integration:**
+**8 modules fully functional with XP integration:**
 1. ✅ Settings - Theme, language, units
 2. ✅ Gamification - Character, attributes, classes, achievements
 3. ✅ Habits - CRUD, toggle, streaks, analytics
@@ -247,12 +247,12 @@ Stage Summary:
 5. ✅ Training - Workouts, exercises, PR tracking
 6. ✅ Finance - Accounts, transactions, budgets
 7. ✅ Diary - Entries, mood, calendar
+8. ✅ Health - Body measurements, wellbeing, goals, analytics
 
-**8 modules still as placeholders:**
-- Feed, Shifts, Collections, Genealogy, Health, Calendar, Looksmaxxing, Reminders
+**7 modules still as placeholders:**
+- Feed, Shifts, Collections, Genealogy, Calendar, Looksmaxxing, Reminders
 
 **Next priorities:**
-- Build Health module (body measurements, wellbeing tracking → endurance XP)
 - Build Calendar module (event management → intelligence/charisma XP)
 - Build Shifts module (work schedule → endurance XP)
 - Polish and refine existing modules
@@ -339,3 +339,219 @@ Stage Summary:
 ✅ Achievement Engine — server-side checking, auto-unlock
 ✅ Integration hooks — useGainXP, useQuestEngine, useGamificationCore
 ✅ Module integration — all actions flow through gamification core
+
+---
+Task ID: 1
+Agent: Code Agent
+Task: Fix Achievements Tab, useQuestEngine Hook, Add XP Toast Notifications, Delete Legacy File
+
+Work Log:
+- **Fixed Achievements Tab** (`src/components/modules/gamification/achievements-tab.tsx`):
+  - Replaced hardcoded definitions with API fetch from `/api/gamification/achievements`
+  - Shows real unlock status based on `isUnlocked` field from API
+  - Progress stats bar at top: "8/25 unlocked" with animated progress bar
+  - Groups by category (general, strength, agility, intelligence, endurance, charisma)
+  - Unlocked: full color, colored icon bg, checkmark + formatted unlock date
+  - Locked: dimmed (opacity-40), grayscale icon, lock icon
+  - Auto-refreshes on `gamification:updated` events
+
+- **Fixed useQuestEngine Hook** (`src/hooks/useQuestEngine.ts`):
+  - Now fetches quest data from `/api/gamification/quests?status=all` after actions
+  - Dispatches `gamification:quests-updated` custom event with quest data
+  - Returns meaningful data: `{ progressed, questCount, completedCount }`
+
+- **Created XP Toast Notifications** (`src/components/shared/xp-notification.tsx`):
+  - Listens to `gamification:updated` custom event
+  - Regular XP toast: module icon + XP amount (attribute color) + attribute badge
+  - Level Up toast: bigger, "⬆️ Level Up!" + new level + class name
+  - Auto-dismiss: 3s XP / 5s level-up
+  - Framer Motion slide-in/out from top-right
+  - Stacked (max 3), en/ru support via settings store
+
+- **Updated useGainXP Hook** (`src/hooks/useGainXP.ts`):
+  - Tracks `previousLevel` before API call for level-up detection
+  - Dispatches `gamification:updated` with: module, action, xpAmount, attribute, newLevel, previousLevel, classId, isHybrid, hybridClassId, leveledUp, achievementsUnlocked
+
+- **Added XPNotification to App Shell** (`src/components/layout/app-shell.tsx`)
+
+- **Deleted legacy** `src/lib/quest-definitions.ts` (no imports found, superseded by quest-pool.ts)
+
+- **Updated shared index** with XPNotification export
+
+Stage Summary:
+- Achievements tab now shows real data from API ✅
+- Quest engine hook actually refreshes quest data ✅
+- XP/Level-Up toast notifications work across all modules ✅
+- Legacy file removed ✅
+- Lint passes clean ✅
+
+---
+Task ID: 5
+Agent: Code Agent
+Task: Build Health Module with XP Integration
+
+Work Log:
+- Added BodyMeasurement, WellbeingLog, HealthGoal models to Prisma schema
+- Created 6 API route files: measurements (GET/POST + PATCH/DELETE), wellbeing (GET/POST + PATCH/DELETE), goals (GET/POST + PATCH/DELETE)
+- XP integration: body_measurements → +5 endurance, mood_log → +3 charisma, wellbeing_good → +5 endurance (when mood is great/good)
+- Created health-store.ts with Zustand — full CRUD for measurements, wellbeing, goals
+- Created health-page.tsx with 4 tabs: Measurements (stats + weight chart + list), Wellbeing (mood selector + logs), Goals (active/completed + progress bars), Analytics (weight line chart + mood pie chart + energy bar chart)
+- Create sheets: measurement form (9 fields), wellbeing form (mood/energy/sleep/stress/symptoms), goal form (6 types + target + deadline)
+- Added 55+ health i18n keys to both en and ru sections
+- Used Recharts for charts, shadcn/ui for components, Framer Motion for animations
+- Lint passes clean
+
+Stage Summary:
+- Health module is FULLY FUNCTIONAL with XP integration
+- All XP flows through shared emitXP from @/lib/emit-xp
+- Cross-module gamification sync via CustomEvent
+- Charts: weight trend, mood distribution, energy trend
+
+---
+Task ID: 6
+Agent: Code Agent
+Task: Build Calendar Module with XP Integration
+
+Work Log:
+- **Verified Prisma schema** — CalendarEvent model already exists with fields: id, title, description, date, timeStart, timeEnd, type, location, isRecurring, recurRule, isCompleted, color, reminderAt, createdAt, updatedAt
+- **Ran db:push** — database already in sync
+- **Verified API routes** — already exist and functional:
+  - GET /api/calendar/events (date, dateFrom, dateTo, type filters)
+  - POST /api/calendar/events → emitXP('calendar', 'event_create') → +3 intelligence
+  - PATCH /api/calendar/events/[id] → emitXP('calendar', 'event_attend') on completion → +5 charisma
+  - DELETE /api/calendar/events/[id]
+- **Verified calendar store** — calendar-store.ts with events CRUD, selectedDate, viewMode, loading state, cache key
+- **Updated event type colors** to match spec (hex instead of oklch):
+  - personal=#6366f1, work=#f97316, health=#22c55e, social=#ec4899, finance=#14b8a6, training=#ef4444, other=#94a3b8
+- **Fixed Recharts chart** — replaced invalid `<rect>` with proper `<Cell>` component for bar chart coloring
+- **Improved current day highlight** — changed from filled circle to accent ring outline (outline CSS property), selected+today shows filled accent circle
+- **Fixed completed event dot color** — changed from oklch to #94a3b8 hex for consistency
+- **Cleaned up unused code**:
+  - Removed unused `Plus` import from lucide-react
+  - Removed unused `addEvent`/`updateEvent` from CreateEventSheet (used in EventForm instead)
+  - Removed unused `selectedDate` destructuring from CalendarPage (used via store in child components)
+  - Removed unused `hasCompleted` variable from calendar grid
+- **Verified i18n** — calendar translations already exist in both en/ru with 30+ keys
+- **Lint passes clean**
+
+Stage Summary:
+- Calendar module is FULLY FUNCTIONAL with XP integration
+- 3 tabs: Calendar (month grid + day events), Events (upcoming/later/completed), Analytics (stats + type chart)
+- XP: event_create → +3 intelligence, event_attend → +5 charisma
+- Create/Edit event Sheet with: title, description, date, time, type selector, location, color picker, recurring toggle
+- Custom month grid with weekday headers (Mon-Sun / Пн-Вс), event dots, navigation arrows, Today button
+- Full en/ru bilingual support
+- All XP flows through shared emitXP from @/lib/emit-xp
+- Cross-module gamification sync via CustomEvent
+
+---
+Task ID: 7
+Agent: Code Agent
+Task: Build Looksmaxxing Module with XP Integration
+
+Work Log:
+- **Verified Prisma schema** — Routine, RoutineLog, ProgressPhoto models already existed; ran `db:push` to ensure sync
+- **Created 5 API route files**:
+  - `/api/looksmaxxing/routines` — GET (list non-archived with logs) + POST (create routine)
+  - `/api/looksmaxxing/routines/[id]` — PATCH (update) + DELETE (soft-archive)
+  - `/api/looksmaxxing/log` — GET (by date/range) + POST (toggle completion → emitXP('looksmaxxing', 'routine_complete') → +8 charisma)
+  - `/api/looksmaxxing/photos` — GET (list with filters) + POST (create → emitXP('looksmaxxing', 'progress_photo') → +5 charisma)
+  - `/api/looksmaxxing/photos/[id]` — DELETE
+- **Created `/src/store/looksmaxxing-store.ts`** — Zustand store with:
+  - routines, routineLogs, photos, selectedDate, isLoading state
+  - Full CRUD: loadRoutines, createRoutine, updateRoutine, deleteRoutine
+  - toggleRoutineLog (returns isCompleted, dispatches gamification:updated)
+  - loadLogs, loadTodayLogs, loadPhotos, createPhoto, deletePhoto
+  - Category colors and icons constants (skincare=#ec4899, grooming=#a855f7, style=#6366f1, fitness=#ef4444, nutrition=#22c55e, posture=#14b8a6, other=#f59e0b)
+- **Created `/src/components/modules/looksmaxxing/looksmaxxing-page.tsx`** — 4 tabs:
+  - **Routines**: List grouped by category (7 categories with emoji + color), cards with name/icon/frequency, delete confirmation, FAB → CreateRoutineSheet
+  - **Today**: Daily checklist with SVG completion ring, toggle routine completion (Check/Circle icons), XP badge on complete
+  - **Photos**: Grid of colored placeholder cards (category-colored bg + icon), star rating display, hover delete button, FAB → CreatePhotoSheet
+  - **Analytics**: 4 stat cards (completion rate, streak, total routines, total photos), category pie chart (Recharts), rating trend bar chart
+- **CreateRoutineSheet**: name, description, category selector (7 categories with color), icon picker (16 emojis), frequency toggle (daily/weekly/custom), steps input (comma-separated)
+- **CreatePhotoSheet**: date, category selector (face/body/style/other), 5-star rating, note
+- **Added 30+ i18n keys** to both en and ru sections in `/src/lib/i18n.ts`
+- XP integration: routine_complete → +8 charisma, progress_photo → +5 charisma, rating_improve → +20 charisma (defined in xp-engine.ts)
+- All XP flows through shared emitXP from @/lib/emit-xp
+- Cross-module gamification sync via CustomEvent
+- Lint passes clean
+
+Stage Summary:
+- Looksmaxxing module is FULLY FUNCTIONAL with XP integration
+- 4 tabs: Routines (CRUD by category), Today (checklist + ring), Photos (grid + CRUD), Analytics (stats + charts)
+- Category colors: skincare=#ec4899, grooming=#a855f7, style=#6366f1, fitness=#ef4444, nutrition=#22c55e, posture=#14b8a6, other=#f59e0b
+- XP: routine_complete → +8 charisma, progress_photo → +5 charisma
+- Full en/ru bilingual support
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Build remaining 5 modules (Shifts, Feed, Collections, Reminders, Genealogy) with XP integration
+
+Work Log:
+- **Created API routes** for all 5 modules:
+  - `/api/shifts/shifts` (GET/POST) + `/api/shifts/shifts/[id]` (PATCH/DELETE) → emitXP on shift completion
+  - `/api/feed/posts` (GET/POST) + `/api/feed/posts/[id]` (PATCH/DELETE) → emitXP on post creation
+  - `/api/collections/collections` (GET/POST) + `/api/collections/collections/[id]` (PATCH/DELETE)
+  - `/api/collections/items` (GET/POST) + `/api/collections/items/[id]` (PATCH/DELETE) → emitXP on item add, review write, collection complete
+  - `/api/reminders/reminders` (GET/POST) + `/api/reminders/reminders/[id]` (PATCH/DELETE) → emitXP on reminder completion
+  - `/api/genealogy/members` (GET/POST) + `/api/genealogy/members/[id]` (PATCH/DELETE) → emitXP on member add
+  - `/api/genealogy/events` (GET/POST) + `/api/genealogy/events/[id]` (PATCH/DELETE) → emitXP on event add
+- **Created Zustand stores** for all 5 modules:
+  - shifts-store.ts: shifts CRUD, selectedDate, completeShift
+  - feed-store.ts: posts CRUD, togglePin
+  - collections-store.ts: collections + items CRUD, updateItem, deleteItem
+  - reminders-store.ts: reminders CRUD, completeReminder
+  - genealogy-store.ts: members + events CRUD
+- **Replaced all 5 placeholder pages** with full functional UIs:
+  - **Shifts**: 3 tabs (Schedule/List/Stats), shift type colors, add shift Sheet, complete/delete
+  - **Feed**: Social timeline, mood indicators (4 moods), pin/unpin, add post Sheet
+  - **Collections**: 2 tabs (Collections/Items), 6 collection types, star ratings, status tracking, progress bars
+  - **Reminders**: 3 tabs (Today/Upcoming/Completed), 4 priority levels with colors, 5 categories, overdue alerts
+  - **Genealogy**: 2 tabs (Family/Events), 8 relation types, 5 event types, birthday alerts, member-event linking
+- All modules dispatch `gamification:updated` CustomEvent for cross-module XP sync
+- All XP flows through shared emitXP from @/lib/emit-xp
+- Lint passes clean, db:push succeeds
+
+Stage Summary:
+- ALL 15 MODULES NOW FULLY FUNCTIONAL with XP integration
+- Shifts: shift_complete → +10 endurance, overtime_logged → +5 strength
+- Feed: post_create → +8 charisma
+- Collections: item_add → +5 intelligence, review_write → +10 charisma, collection_complete → +30 intelligence
+- Reminders: reminder_complete → +3 agility
+- Genealogy: member_add → +10 charisma, event_add → +5 charisma
+- Full en/ru bilingual support across all modules
+- No more placeholder/Coming Soon modules
+
+## Current Project Status
+
+**ALL 15 modules fully functional with XP integration:**
+1. ✅ Gamification - Character, attributes, classes, achievements, quests
+2. ✅ Habits - CRUD, toggle, streaks, analytics
+3. ✅ Nutrition - Meals, water, macros
+4. ✅ Training - Workouts, exercises, PR tracking
+5. ✅ Finance - Accounts, transactions, budgets
+6. ✅ Diary - Entries, mood, calendar
+7. ✅ Health - Body measurements, wellbeing, goals
+8. ✅ Calendar - Events, month view, attendance
+9. ✅ Looksmaxxing - Routines, photos, self-care tracking
+10. ✅ Shifts - Work schedule, overtime, stats
+11. ✅ Feed - Social journal, moods, pinned posts
+12. ✅ Collections - Books/movies/games, ratings, reviews
+13. ✅ Reminders - Priority-based, categories, overdue alerts
+14. ✅ Genealogy - Family tree, events, birthdays
+15. ✅ Settings - Theme, language, units
+
+**Gamification Core (fully integrated):**
+- XP Engine: 12 modules with XP rules, exponential level scaling
+- Class System: 21 classes + 10 hybrids, auto-assignment based on dominant stat
+- Quest System: 22 quest templates, dynamic generation, progress tracking
+- Achievement Engine: 25 achievements, server-side checking, auto-unlock
+- XP Toast Notifications: Real-time XP/level-up feedback across all modules
+- Cross-module sync via CustomEvent('gamification:updated')
+
+**Next priorities:**
+- Polish UI details and animations
+- Enhance analytics/insights across modules
+- Add data export/import
+- Performance optimization
