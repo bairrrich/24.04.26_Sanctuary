@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Rss, Wallet, Apple, Dumbbell, MoreHorizontal,
@@ -13,18 +14,13 @@ import { LAYOUT, ANIMATION, Z_INDEX } from '@/lib/constants';
 import { t } from '@/lib/i18n';
 import type { ModuleId } from '@/types';
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+type IconComponent = React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+
+const ICON_MAP: Record<string, IconComponent> = {
   Rss, Wallet, Apple, Dumbbell, MoreHorizontal,
   BookOpen, CalendarClock, Target, Library, GitBranch,
   Heart, Calendar, Sparkles, Trophy, Bell, Settings, X,
 };
-
-const NAV_ITEMS: { moduleId: ModuleId; icon: string; labelKey: string }[] = [
-  { moduleId: 'feed', icon: 'Rss', labelKey: 'nav.home' },
-  { moduleId: 'finance', icon: 'Wallet', labelKey: 'nav.finance' },
-  { moduleId: 'nutrition', icon: 'Apple', labelKey: 'nav.nutrition' },
-  { moduleId: 'training', icon: 'Dumbbell', labelKey: 'nav.training' },
-];
 
 interface MobileNavbarProps {
   activeModule: ModuleId;
@@ -33,9 +29,25 @@ interface MobileNavbarProps {
 
 export function MobileNavbar({ activeModule, onModuleSelect }: MobileNavbarProps) {
   const moreMenuOpen = useAppStore((s) => s.moreMenuOpen);
+  const moduleUsage = useAppStore((s) => s.moduleUsage);
   const setMoreMenuOpen = useAppStore((s) => s.setMoreMenuOpen);
   const language = useSettingsStore((s) => s.language);
   const moreModules = getMoreNavModules();
+
+  const navItems = useMemo(() => {
+    const candidates = Object.values(MODULE_REGISTRY)
+      .filter((module) => module.id !== 'settings')
+      .map((module) => ({
+        moduleId: module.id,
+        icon: module.icon,
+        labelKey: module.nameKey,
+        score: (moduleUsage[module.id] ?? 0) + (module.navGroup === 'primary' ? 3 : 0),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4);
+
+    return candidates;
+  }, [moduleUsage]);
 
   const isMoreActive = moreModules.some((m) => m.id === activeModule);
 
@@ -117,7 +129,7 @@ export function MobileNavbar({ activeModule, onModuleSelect }: MobileNavbarProps
         style={{ height: LAYOUT.MOBILE_NAV_HEIGHT, zIndex: Z_INDEX.MOBILE_NAV }}
       >
         <div className="flex items-center justify-around h-full px-2">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = ICON_MAP[item.icon];
             const mod = MODULE_REGISTRY[item.moduleId];
             const isActive = activeModule === item.moduleId;

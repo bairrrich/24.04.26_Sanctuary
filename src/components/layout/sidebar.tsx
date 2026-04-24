@@ -13,7 +13,9 @@ import { LAYOUT, ANIMATION, Z_INDEX } from '@/lib/constants';
 import { t } from '@/lib/i18n';
 import type { ModuleId } from '@/types';
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+type IconComponent = React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+
+const ICON_MAP: Record<string, IconComponent> = {
   Rss, BookOpen, CalendarClock, Wallet, Apple, Dumbbell,
   Target, Library, GitBranch, Heart, Calendar, Sparkles,
   Trophy, Bell, Settings,
@@ -126,7 +128,7 @@ export function Sidebar({ activeModule, onModuleSelect }: SidebarProps) {
 }
 
 interface SidebarItemProps {
-  icon: React.ComponentType<{ className?: string }> | undefined;
+  icon: IconComponent | undefined;
   label: string;
   accentColor: string;
   isActive: boolean;
