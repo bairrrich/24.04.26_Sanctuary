@@ -13,110 +13,6 @@ import { ReminderCard } from './components/reminder-card';
 import { ReminderFormSheet } from './components/reminder-form-sheet';
 import { defaultReminderForm, formatISODate, getQuickDate, getTodayISO, parseNaturalInput } from './utils';
 
-const PRESETS = [
-  { key: 'water', icon: '💧', titleEn: 'Drink water', titleRu: 'Выпить воду', category: 'health', priority: 'normal' },
-  { key: 'training', icon: '🏋️', titleEn: 'Workout', titleRu: 'Тренировка', category: 'health', priority: 'high' },
-  { key: 'bill', icon: '🧾', titleEn: 'Pay bill', titleRu: 'Оплатить счет', category: 'finance', priority: 'high' },
-  { key: 'call', icon: '📞', titleEn: 'Call', titleRu: 'Позвонить', category: 'personal', priority: 'normal' },
-] as const;
-
-const WEEKDAY_MAP: Record<string, number> = {
-  mon: 1, monday: 1, пн: 1, понедельник: 1,
-  tue: 2, tuesday: 2, вт: 2, вторник: 2,
-  wed: 3, wednesday: 3, ср: 3, среда: 3,
-  thu: 4, thursday: 4, чт: 4, четверг: 4,
-  fri: 5, friday: 5, пт: 5, пятница: 5,
-  sat: 6, saturday: 6, сб: 6, суббота: 6,
-  sun: 0, sunday: 0, вс: 0, воскресенье: 0,
-};
-
-type ReminderForm = {
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  priority: string;
-  category: string;
-};
-
-function formatISODate(date: Date) {
-  return date.toISOString().split('T')[0];
-}
-
-function getTodayISO() {
-  return formatISODate(new Date());
-}
-
-function nextWeekday(baseDate: Date, weekday: number) {
-  const date = new Date(baseDate);
-  const diff = (weekday - date.getDay() + 7) % 7 || 7;
-  date.setDate(date.getDate() + diff);
-  return date;
-}
-
-function normalizeTime(time: string) {
-  const [rawHours, rawMinutes] = time.split(':');
-  const hours = Number(rawHours);
-  const minutes = Number(rawMinutes);
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-function parseNaturalInput(value: string, now: Date) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  const fullPattern = /^(today|tomorrow|сегодня|завтра|[\p{L}]+)\s+(\d{1,2}:\d{2})\s+(.+)$/iu;
-  const dateOnlyPattern = /^(today|tomorrow|сегодня|завтра|[\p{L}]+)\s+(.+)$/iu;
-
-  const full = trimmed.match(fullPattern);
-  if (full) {
-    const [, tokenRaw, timeRaw, titleRaw] = full;
-    const token = tokenRaw.toLowerCase();
-    const time = normalizeTime(timeRaw);
-    if (!time) return null;
-    const parsedDate = parseDateToken(token, now);
-    if (!parsedDate) return null;
-    return { date: formatISODate(parsedDate), time, title: titleRaw.trim() };
-  }
-
-  const dateOnly = trimmed.match(dateOnlyPattern);
-  if (dateOnly) {
-    const [, tokenRaw, titleRaw] = dateOnly;
-    const token = tokenRaw.toLowerCase();
-    const parsedDate = parseDateToken(token, now);
-    if (!parsedDate) return null;
-    return { date: formatISODate(parsedDate), time: '', title: titleRaw.trim() };
-  }
-
-  return null;
-}
-
-function parseDateToken(token: string, now: Date) {
-  if (token === 'today' || token === 'сегодня') return new Date(now);
-  if (token === 'tomorrow' || token === 'завтра') {
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
-  }
-  if (WEEKDAY_MAP[token] !== undefined) {
-    return nextWeekday(now, WEEKDAY_MAP[token]);
-  }
-  return null;
-}
-
-function getWeekendDate(baseDate: Date) {
-  const date = new Date(baseDate);
-  const day = date.getDay();
-  if (day === 6 || day === 0) return date;
-  date.setDate(date.getDate() + (6 - day));
-  return date;
-}
-
-function defaultForm(): ReminderForm {
-  return { title: '', description: '', date: getTodayISO(), time: '', priority: 'normal', category: 'general' };
-}
-
 export function RemindersPage() {
   const language = useSettingsStore((s) => s.language);
   const config = MODULE_REGISTRY.reminders;
@@ -129,7 +25,7 @@ export function RemindersPage() {
 
   useEffect(() => { loadReminders(true); }, [loadReminders]);
 
-  const today = getTodayISODate();
+  const today = getTodayISO();
   const todayReminders = reminders.filter((r) => r.date === today && !r.isCompleted);
   const upcomingReminders = reminders.filter((r) => r.date > today && !r.isCompleted).sort((a, b) => a.date.localeCompare(b.date));
   const overdueReminders = reminders.filter((r) => r.date < today && !r.isCompleted).sort((a, b) => a.date.localeCompare(b.date));
@@ -163,7 +59,7 @@ export function RemindersPage() {
   };
 
   const handleTitleChange = (value: string) => {
-    const parsed = parseReminderInput(value, new Date());
+    const parsed = parseNaturalInput(value, new Date());
     if (!parsed) {
       setParseHint('');
       setForm((prev) => ({ ...prev, title: value }));
@@ -194,12 +90,6 @@ export function RemindersPage() {
     const nextDate = new Date(reminder.date);
     nextDate.setDate(nextDate.getDate() + 1);
     await updateReminder(reminder.id, { date: formatISODate(nextDate) });
-  };
-
-  const reschedulePlusOneDay = async (reminder: ReminderItem) => {
-    const nextDate = new Date(reminder.date);
-    nextDate.setDate(nextDate.getDate() + 1);
-    await updateReminder(reminder.id, { date: toISODate(nextDate) });
   };
 
   return (
