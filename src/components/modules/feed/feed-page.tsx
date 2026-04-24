@@ -89,7 +89,14 @@ export function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-2">
               {MOODS.map((m) => (
-                <button key={m.value} onClick={() => setMood(mood === m.value ? null : m.value)} className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${mood === m.value ? 'ring-2 scale-110' : 'opacity-50 hover:opacity-80'}`} style={mood === m.value ? { ringColor: m.color } : {}}>
+                <button
+                  key={m.value}
+                  onClick={() => setMood(mood === m.value ? null : m.value)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${
+                    mood === m.value ? 'scale-110' : 'opacity-50 hover:opacity-80'
+                  }`}
+                  style={mood === m.value ? { boxShadow: `0 0 0 2px ${m.color}` } : undefined}
+                >
                   {m.icon}
                 </button>
               ))}
