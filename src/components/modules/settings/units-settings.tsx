@@ -117,7 +117,7 @@ export function UnitsSettings() {
 }
 
 interface UnitSectionProps<T extends string> {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   title: string;
   options: UnitOption<T>[];
   value: T;
