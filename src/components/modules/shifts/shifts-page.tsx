@@ -10,7 +10,7 @@ import { useShiftsStore } from '@/store/shifts-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import type { TabItem } from '@/types';
 
 const SHIFT_TYPES = [
@@ -54,7 +54,7 @@ export function ShiftsPage() {
     <div className="flex flex-col h-full">
       <PageHeader title={language === 'ru' ? 'Смены' : 'Shifts'} icon={CalendarClock} accentColor={config.accentColor} subtitle={language === 'ru' ? 'График смен и переработок' : 'Shift schedule and overtime'} />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         <ModuleTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} accentColor={config.accentColor} />
 
         {activeTab === 'schedule' && (
