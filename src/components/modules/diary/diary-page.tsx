@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { PageHeader, ModuleTabs, FAB, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { useDiaryStore, type DiaryEntry } from '@/store/diary-store';
 import { useGamificationStore } from '@/store/gamification-store';
@@ -149,7 +149,7 @@ export function DiaryPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         {/* Show empty state only on first load with no entries and on entries tab */}
         {!isLoading && entries.length === 0 && activeTab === 'entries' ? (
           <>
@@ -885,7 +885,7 @@ function CreateEntrySheet({
           </SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-5 mt-4 overflow-y-auto flex-1 px-4 pb-4">
+        <div className="space-y-5 mt-3 overflow-y-auto flex-1 pb-1">
           {/* Date indicator */}
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -1049,7 +1049,7 @@ function EditEntryForm({
   };
 
   return (
-    <div className="space-y-5 mt-4 overflow-y-auto flex-1 px-4 pb-4">
+    <div className="space-y-5 mt-3 overflow-y-auto flex-1 pb-1">
       {/* Mood Selector */}
       <div>
         <label className="text-xs text-muted-foreground mb-2 block">
