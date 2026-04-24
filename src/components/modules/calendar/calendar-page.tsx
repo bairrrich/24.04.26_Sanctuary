@@ -529,7 +529,7 @@ function EventCard({
   event: CalendarEvent;
   language: 'en' | 'ru';
   accentColor: string;
-  onEdit: () => void;
+  onEdit: (event: CalendarEvent) => void;
   onComplete: () => void;
   onDelete: () => void;
 }) {
@@ -551,7 +551,7 @@ function EventCard({
       </div>
       <div
         className="flex-1 min-w-0 cursor-pointer"
-        onClick={onEdit}
+        onClick={() => onEdit(event)}
       >
         <div className="flex items-center gap-2">
           <span className={`text-sm font-medium truncate ${event.isCompleted ? 'line-through' : ''}`}>
