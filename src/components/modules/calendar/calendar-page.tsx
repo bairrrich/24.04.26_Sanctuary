@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import { PageHeader, ModuleTabs, FAB, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import {
   useCalendarStore,
@@ -193,7 +193,7 @@ export function CalendarPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         <ModuleTabs
           tabs={tabs}
           activeTab={activeTab}
