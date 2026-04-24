@@ -86,10 +86,10 @@ export function IconColorPicker({
               onClick={() => onIconChange(icon)}
               className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-all ${
                 selectedIcon === icon
-                  ? 'ring-2 ring-offset-1'
+                  ? 'ring-offset-1'
                   : 'hover:bg-muted'
               }`}
-              style={selectedIcon === icon ? { ringColor: selectedColor } : undefined}
+              style={selectedIcon === icon ? { boxShadow: `0 0 0 2px ${selectedColor}` } : undefined}
             >
               {icon.charAt(0)}
             </button>

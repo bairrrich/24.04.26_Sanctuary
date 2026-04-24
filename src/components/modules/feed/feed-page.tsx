@@ -6,11 +6,12 @@ import { MessageSquare, Plus, Pin, Trash2, Heart } from 'lucide-react';
 import { PageHeader, EmptyState, FAB } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
 import { useSettingsStore } from '@/store/settings-store';
+import { useAppStore } from '@/store/app-store';
 import { useFeedStore } from '@/store/feed-store';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 
 const MOODS = [
   { value: 'great', icon: '😄', labelEn: 'Great', labelRu: 'Отлично', color: '#22c55e' },
@@ -21,6 +22,9 @@ const MOODS = [
 
 export function FeedPage() {
   const language = useSettingsStore((s) => s.language);
+  const setActiveModule = useAppStore((s) => s.setActiveModule);
+  const checklist = useAppStore((s) => s.activationChecklist);
+  const markChecklistDone = useAppStore((s) => s.markChecklistDone);
   const config = MODULE_REGISTRY.feed;
   const { posts, isLoading, loadPosts, addPost, togglePin, deletePost } = useFeedStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -29,9 +33,17 @@ export function FeedPage() {
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
+  const triggerFab = () => {
+    requestAnimationFrame(() => {
+      const fab = document.querySelector<HTMLButtonElement>('[data-fab=\"true\"]');
+      fab?.click();
+    });
+  };
+
   const handleAdd = async () => {
     if (!content.trim()) return;
     await addPost({ content: content.trim(), mood: mood ?? undefined });
+    markChecklistDone('feedNote');
     setContent('');
     setMood(null);
     setIsOpen(false);
@@ -49,11 +61,69 @@ export function FeedPage() {
     return d.toLocaleDateString();
   };
 
+  const doneCount = [checklist.feedNote, checklist.firstWorkout, checklist.firstExpense].filter(Boolean).length;
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title={language === 'ru' ? 'Лента' : 'Feed'} icon={MessageSquare} accentColor={config.accentColor} subtitle={language === 'ru' ? 'Мысли и моменты' : 'Thoughts and moments'} />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-3`}>
+        <div className="rounded-xl border bg-card p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {language === 'ru' ? 'Фокус на сегодня' : 'Today Focus'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {language === 'ru' ? 'Быстрые действия для ежедневного прогресса' : 'Quick actions for daily progress'}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={triggerFab}>
+              {language === 'ru' ? 'Запись' : 'Note'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => {
+                markChecklistDone('firstWorkout');
+                setActiveModule('training');
+                triggerFab();
+              }}
+            >
+              {language === 'ru' ? 'Тренировка' : 'Workout'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => {
+                markChecklistDone('firstExpense');
+                setActiveModule('finance');
+                triggerFab();
+              }}
+            >
+              {language === 'ru' ? 'Расход' : 'Expense'}
+            </Button>
+          </div>
+          <div className="mt-3 rounded-lg bg-muted/50 p-2">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {language === 'ru' ? 'Чеклист запуска' : 'Activation checklist'}
+              </span>
+              <span className="text-[10px] text-muted-foreground">{doneCount}/3</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${(doneCount / 3) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
         {posts.length === 0 ? (
           <EmptyState icon={MessageSquare} title={language === 'ru' ? 'Лента пуста' : 'Feed is empty'} description={language === 'ru' ? 'Поделитесь первой мыслью' : 'Share your first thought'} accentColor={config.accentColor} />
         ) : posts.map((post, i) => {
@@ -89,7 +159,14 @@ export function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-2">
               {MOODS.map((m) => (
-                <button key={m.value} onClick={() => setMood(mood === m.value ? null : m.value)} className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${mood === m.value ? 'ring-2 scale-110' : 'opacity-50 hover:opacity-80'}`} style={mood === m.value ? { ringColor: m.color } : {}}>
+                <button
+                  key={m.value}
+                  onClick={() => setMood(mood === m.value ? null : m.value)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${
+                    mood === m.value ? 'scale-110' : 'opacity-50 hover:opacity-80'
+                  }`}
+                  style={mood === m.value ? { boxShadow: `0 0 0 2px ${m.color}` } : undefined}
+                >
                   {m.icon}
                 </button>
               ))}

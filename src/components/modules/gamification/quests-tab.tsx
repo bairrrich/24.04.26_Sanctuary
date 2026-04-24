@@ -88,7 +88,10 @@ export function QuestsTab() {
   }, []);
 
   useEffect(() => {
-    loadQuests();
+    const timer = window.setTimeout(() => {
+      void loadQuests();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadQuests]);
 
   const generateDailyQuests = async () => {
