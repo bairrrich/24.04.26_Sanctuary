@@ -3,10 +3,12 @@
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { MODULE_REGISTRY } from '@/lib/module-config';
 import { ANIMATION } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
 import { Sidebar } from './sidebar';
 import { MobileNavbar } from './mobile-navbar';
 import { XPNotification } from '@/components/shared/xp-notification';
@@ -109,6 +111,19 @@ export function AppShell() {
 
       {/* XP Notification Overlay */}
       <XPNotification />
+
+      {/* Discoverability button for command palette (desktop) */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="fixed right-4 top-3 z-50 hidden items-center gap-2 text-xs lg:flex"
+        onClick={() => window.dispatchEvent(new Event('command-palette:open'))}
+      >
+        <Search className="h-3.5 w-3.5" />
+        <span>Search</span>
+        <kbd className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
+      </Button>
 
       {/* Global command palette (Cmd/Ctrl + K) */}
       <CommandPalette />

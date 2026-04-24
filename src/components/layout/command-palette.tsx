@@ -29,6 +29,7 @@ function getIconByName(iconName: string): LucideIcon {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const activeModule = useAppStore((s) => s.activeModule);
+  const recentModules = useAppStore((s) => s.recentModules);
   const setActiveModule = useAppStore((s) => s.setActiveModule);
   const language = useSettingsStore((s) => s.language);
 
@@ -44,9 +45,19 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  useEffect(() => {
+    const openPalette = () => setOpen(true);
+    window.addEventListener('command-palette:open', openPalette);
+    return () => window.removeEventListener('command-palette:open', openPalette);
+  }, []);
+
   const modules = useMemo(
     () => MODULE_ORDER.map((id) => MODULE_REGISTRY[id]),
     []
+  );
+  const recent = useMemo(
+    () => recentModules.map((id) => MODULE_REGISTRY[id]),
+    [recentModules]
   );
 
   const triggerFab = () => {
@@ -102,6 +113,30 @@ export function CommandPalette() {
         </CommandGroup>
 
         <CommandSeparator />
+
+        {recent.length > 0 && (
+          <>
+            <CommandGroup heading={language === 'ru' ? 'Недавние' : 'Recent'}>
+              {recent.map((module) => {
+                const Icon = getIconByName(module.icon);
+                return (
+                  <CommandItem
+                    key={`recent-${module.id}`}
+                    value={`recent ${module.id} ${module.nameKey}`}
+                    onSelect={() => {
+                      setActiveModule(module.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{t(language, module.nameKey)}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
 
         <CommandGroup heading={language === 'ru' ? 'Быстрые действия' : 'Quick Actions'}>
           <CommandItem

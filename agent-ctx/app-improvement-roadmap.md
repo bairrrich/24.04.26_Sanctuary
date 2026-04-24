@@ -181,4 +181,8 @@
 - ✅ Добавлен **Quick Create** из command palette: запуск FAB активного модуля.
 - ✅ Реализована базовая **adaptive mobile navigation**: нижние 4 модуля формируются динамически по локальной частоте использования.
 - ✅ Добавлены **deep-link модулей** (`?module=...`) и быстрый `copy link` из command palette.
+- ✅ Добавлен блок **Recent modules** в command palette (последние 5 модулей).
+- ✅ Добавлен блок **Today Focus** в Feed с быстрыми действиями (заметка/тренировка/расход).
+- ✅ Добавлена кнопка-активатор command palette на desktop (discoverability + shortcut hint).
+- ✅ Добавлен базовый **Activation checklist** (3 шага) в Feed с прогресс-баром.
 - ⏭️ AI-направление и retention/монетизация намеренно пропущены в этой итерации.

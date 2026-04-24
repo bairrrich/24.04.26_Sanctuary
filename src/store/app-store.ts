@@ -7,6 +7,14 @@ interface AppState {
   activeModule: ModuleId;
   /** Simple local usage counter for adaptive navigation */
   moduleUsage: Record<ModuleId, number>;
+  /** Most recently visited modules (for quick actions) */
+  recentModules: ModuleId[];
+  /** First-week activation checklist */
+  activationChecklist: {
+    feedNote: boolean;
+    firstWorkout: boolean;
+    firstExpense: boolean;
+  };
   /** Whether the "more" menu is open on mobile */
   moreMenuOpen: boolean;
   /** Whether sidebar is collapsed on desktop */
@@ -14,6 +22,7 @@ interface AppState {
 
   // Actions
   setActiveModule: (module: ModuleId) => void;
+  markChecklistDone: (item: 'feedNote' | 'firstWorkout' | 'firstExpense') => void;
   setMoreMenuOpen: (open: boolean) => void;
   toggleSidebar: () => void;
 }
@@ -39,6 +48,12 @@ export const useAppStore = create<AppState>()(
         reminders: 0,
         settings: 0,
       },
+      recentModules: ['feed'],
+      activationChecklist: {
+        feedNote: false,
+        firstWorkout: false,
+        firstExpense: false,
+      },
       moreMenuOpen: false,
       sidebarCollapsed: false,
 
@@ -50,10 +65,19 @@ export const useAppStore = create<AppState>()(
             ...state.moduleUsage,
             [module]: (state.moduleUsage[module] ?? 0) + 1,
           },
+          recentModules: [module, ...state.recentModules.filter((id) => id !== module)].slice(0, 5),
         })),
 
       setMoreMenuOpen: (open) =>
         set({ moreMenuOpen: open }),
+
+      markChecklistDone: (item) =>
+        set((state) => ({
+          activationChecklist: {
+            ...state.activationChecklist,
+            [item]: true,
+          },
+        })),
 
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -63,6 +87,8 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         activeModule: state.activeModule,
         moduleUsage: state.moduleUsage,
+        recentModules: state.recentModules,
+        activationChecklist: state.activationChecklist,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
     }
