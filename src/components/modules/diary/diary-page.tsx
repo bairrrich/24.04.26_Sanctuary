@@ -885,7 +885,7 @@ function CreateEntrySheet({
           </SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-5 mt-4 overflow-y-auto flex-1 px-4 pb-4">
+        <div className="space-y-5 mt-3 overflow-y-auto flex-1 pb-1">
           {/* Date indicator */}
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -1049,7 +1049,7 @@ function EditEntryForm({
   };
 
   return (
-    <div className="space-y-5 mt-4 overflow-y-auto flex-1 px-4 pb-4">
+    <div className="space-y-5 mt-3 overflow-y-auto flex-1 pb-1">
       {/* Mood Selector */}
       <div>
         <label className="text-xs text-muted-foreground mb-2 block">
