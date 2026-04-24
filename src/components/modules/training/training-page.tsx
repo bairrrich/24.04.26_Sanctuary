@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { PageHeader, ModuleTabs, FAB, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { useTrainingStore, type Workout, type Exercise, type CreateExerciseData } from '@/store/training-store';
 import { useGamificationStore } from '@/store/gamification-store';
@@ -20,7 +20,11 @@ import type { TabItem } from '@/types';
 // ==================== Helpers ====================
 
 function getTodayString(): string {
-  return new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatDate(dateStr: string, language: 'en' | 'ru'): string {
@@ -45,7 +49,10 @@ function formatFullDate(dateStr: string, language: 'en' | 'ru'): string {
 function addDays(dateStr: string, days: number): string {
   const date = new Date(dateStr + 'T00:00:00');
   date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 const WORKOUT_TYPES = [
@@ -129,7 +136,7 @@ export function TrainingPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         {/* Always show tabs — never hide them during loading */}
         <ModuleTabs
           tabs={tabs}
