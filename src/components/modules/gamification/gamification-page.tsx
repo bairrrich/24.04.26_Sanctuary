@@ -11,6 +11,7 @@ import { ClassDisplay } from './class-display';
 import { AttributeDisplay } from './attribute-display';
 import { XPEventLog } from './xp-event-log';
 import { AchievementsTab } from './achievements-tab';
+import { QuestsTab } from './quests-tab';
 import { CharacterSetup } from './character-setup';
 import type { TabItem } from '@/types';
 
@@ -68,6 +69,7 @@ export function GamificationPage() {
   // Main gamification view
   const tabs: TabItem[] = [
     { id: 'profile', label: language === 'ru' ? 'Профиль' : 'Profile' },
+    { id: 'quests', label: language === 'ru' ? 'Квесты' : 'Quests' },
     { id: 'attributes', label: language === 'ru' ? 'Характеристики' : 'Attributes' },
     { id: 'class', label: language === 'ru' ? 'Класс' : 'Class' },
     { id: 'achievements', label: language === 'ru' ? 'Достижения' : 'Achievements' },
@@ -101,6 +103,10 @@ export function GamificationPage() {
             <AttributeDisplay />
             <XPEventLog />
           </div>
+        )}
+
+        {activeTab === 'quests' && (
+          <QuestsTab />
         )}
 
         {activeTab === 'attributes' && (

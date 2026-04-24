@@ -1,32 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { calculateXP } from '@/lib/xp-engine';
-import { assignClass } from '@/lib/class-system';
-import { attributeLevelFromXP, characterLevelFromXP } from '@/lib/xp-engine';
-import type { RPGAttribute } from '@/types';
-
-// ==================== XP Emitter ====================
-
-async function emitXPInternal(characterId: string, module: string, action: string) {
-  const xpResult = calculateXP(module, action);
-  if (!xpResult) return null;
-  await db.xPEvent.create({ data: { characterId, module, action, attribute: xpResult.attribute, amount: xpResult.amount } });
-  const currentAttr = await db.characterAttribute.findUnique({ where: { characterId_attribute: { characterId, attribute: xpResult.attribute } } });
-  if (!currentAttr) return null;
-  const newAttrXP = currentAttr.xp + xpResult.amount;
-  const newAttrLevel = attributeLevelFromXP(newAttrXP);
-  await db.characterAttribute.update({ where: { id: currentAttr.id }, data: { xp: newAttrXP, level: newAttrLevel } });
-  const character = await db.character.findUnique({ where: { id: characterId }, include: { attributes: true } });
-  if (!character) return null;
-  const newTotalXP = character.totalXP + xpResult.amount;
-  const newLevel = characterLevelFromXP(newTotalXP);
-  const attributeXP: Record<string, number> = { strength: 0, agility: 0, intelligence: 0, endurance: 0, charisma: 0 };
-  for (const attr of character.attributes) { const key = attr.attribute; if (key in attributeXP) attributeXP[key] = attr.xp; }
-  attributeXP[xpResult.attribute] = newAttrXP;
-  const classResult = assignClass(attributeXP as Record<RPGAttribute, number>, newLevel);
-  await db.character.update({ where: { id: characterId }, data: { totalXP: newTotalXP, level: newLevel, currentClassId: classResult.classId } });
-  return { attribute: xpResult.attribute, amount: xpResult.amount, newTotalXP, newLevel };
-}
+import { emitXP } from '@/lib/emit-xp';
 
 // ==================== Helpers ====================
 
@@ -120,12 +94,12 @@ export async function POST(request: NextRequest) {
     const character = await db.character.findFirst();
     if (character) {
       // entry_create: always emit
-      const xp1 = await emitXPInternal(character.id, 'diary', 'entry_create');
+      const xp1 = await emitXP(character.id, 'diary', 'entry_create');
       if (xp1) xpEvents.push({ attribute: xp1.attribute, amount: xp1.amount, action: 'entry_create' });
 
       // entry_long: if content >= 500 chars
       if (content.trim().length >= 500) {
-        const xp2 = await emitXPInternal(character.id, 'diary', 'entry_long');
+        const xp2 = await emitXP(character.id, 'diary', 'entry_long');
         if (xp2) xpEvents.push({ attribute: xp2.attribute, amount: xp2.amount, action: 'entry_long' });
       }
 
@@ -135,7 +109,7 @@ export async function POST(request: NextRequest) {
       });
       // todayEntriesCount includes the entry we just created, so if it's 1, it's the first
       if (todayEntriesCount === 1) {
-        const xp3 = await emitXPInternal(character.id, 'diary', 'daily_reflection');
+        const xp3 = await emitXP(character.id, 'diary', 'daily_reflection');
         if (xp3) xpEvents.push({ attribute: xp3.attribute, amount: xp3.amount, action: 'daily_reflection' });
       }
     }

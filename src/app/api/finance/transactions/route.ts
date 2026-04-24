@@ -1,82 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { calculateXP, attributeLevelFromXP, characterLevelFromXP } from '@/lib/xp-engine';
-import { assignClass } from '@/lib/class-system';
-import type { RPGAttribute } from '@/types';
-
-// ==================== Helper: Internal emit XP ====================
-
-async function emitXPInternal(characterId: string, module: string, action: string) {
-  const xpResult = calculateXP(module, action);
-  if (!xpResult) return null;
-
-  await db.xPEvent.create({
-    data: {
-      characterId,
-      module,
-      action,
-      attribute: xpResult.attribute,
-      amount: xpResult.amount,
-    },
-  });
-
-  const currentAttr = await db.characterAttribute.findUnique({
-    where: {
-      characterId_attribute: { characterId, attribute: xpResult.attribute },
-    },
-  });
-
-  if (!currentAttr) return null;
-
-  const newAttrXP = currentAttr.xp + xpResult.amount;
-  const newAttrLevel = attributeLevelFromXP(newAttrXP);
-
-  await db.characterAttribute.update({
-    where: { id: currentAttr.id },
-    data: { xp: newAttrXP, level: newAttrLevel },
-  });
-
-  const character = await db.character.findUnique({
-    where: { id: characterId },
-    include: { attributes: true },
-  });
-
-  if (!character) return null;
-
-  const newTotalXP = character.totalXP + xpResult.amount;
-  const newLevel = characterLevelFromXP(newTotalXP);
-
-  const attributeXP: Record<RPGAttribute, number> = {
-    strength: 0,
-    agility: 0,
-    intelligence: 0,
-    endurance: 0,
-    charisma: 0,
-  };
-  for (const attr of character.attributes) {
-    const key = attr.attribute as RPGAttribute;
-    if (key in attributeXP) attributeXP[key] = attr.xp;
-  }
-  attributeXP[xpResult.attribute] = newAttrXP;
-
-  const classResult = assignClass(attributeXP, newLevel);
-
-  await db.character.update({
-    where: { id: characterId },
-    data: {
-      totalXP: newTotalXP,
-      level: newLevel,
-      currentClassId: classResult.classId,
-    },
-  });
-
-  return {
-    attribute: xpResult.attribute,
-    amount: xpResult.amount,
-    newTotalXP,
-    newLevel,
-  };
-}
+import { emitXP } from '@/lib/emit-xp';
 
 // ==================== GET /api/finance/transactions ====================
 
@@ -183,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     const character = await db.character.findFirst();
     if (character) {
-      const xpResult = await emitXPInternal(character.id, 'finance', 'transaction_log');
+      const xpResult = await emitXP(character.id, 'finance', 'transaction_log');
       if (xpResult) {
         xpEvents.push({
           module: 'finance',

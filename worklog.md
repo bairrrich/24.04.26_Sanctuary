@@ -295,3 +295,47 @@ Stage Summary:
 - Date navigation in Training: works perfectly (prev/next) ✅
 - No more full-page spinners blocking UI ✅
 - All changes backward compatible, no breaking changes
+
+---
+Task ID: 18
+Agent: Main Agent
+Task: Reorganize Gamification as CORE architecture per spec principles
+
+Work Log:
+- **Audited** current gamification vs spec — identified 10 critical issues
+- **Created `/src/lib/emit-xp.ts`** — shared server-side XP emission, eliminates 7x duplication
+  - Achievement checking after XP is emitted (non-blocking)
+  - Quest progress updates for active quests matching module:action
+- **Updated 7 API routes** to use shared `emitXP` from `@/lib/emit-xp`
+  - habits/log, nutrition/meals, nutrition/water, training/workouts, diary, finance/transactions, finance/budgets
+- **Created `/src/lib/gamification/quest-pool.ts`** — 22 quest templates across 6 categories, bilingual (en/ru)
+- **Created `/src/lib/gamification/quest-generator.ts`** — Dynamic quest generation with category-variety algorithm
+- **Created `/src/lib/gamification/achievement-engine.ts`** — 25 achievements with condition checking
+- **Created `/src/app/api/gamification/quests/route.ts`** — GET (enriched) + POST (generate) quest API
+- **Created `/src/app/api/gamification/achievements/route.ts`** — GET achievements API
+- **Created `/src/hooks/useGainXP.ts`** — Unified client-side XP hook (all modules should use this)
+- **Created `/src/hooks/useQuestEngine.ts`** — Quest progress tracking hook
+- **Created `/src/hooks/useGamificationCore.ts`** — Combined hook: onAction('module', 'action') = XP + quests
+- **Created `/src/components/modules/gamification/quests-tab.tsx`** — Full quest UI with:
+  - Daily/Weekly/Challenge sections
+  - Quest cards with progress bars, difficulty badges, XP rewards, stat badges
+  - "Generate quests" button
+  - Expiry time display
+- **Updated gamification-page.tsx** — Added Quests tab (6 tabs now: Profile, Quests, Attributes, Class, Achievements, Activity)
+
+Stage Summary:
+- Gamification is now the CORE: emitXP handles XP + achievements + quest progress in one call
+- `emitXPInternal` duplication eliminated (was 7 copies, now 1 shared module)
+- Quest System is LIVE: 22 templates, dynamic generation, progress tracking, full UI
+- Achievement Engine is LIVE: 25 achievements, server-side checking, automatic unlocking
+- 3 integration hooks created: `useGainXP`, `useQuestEngine`, `useGamificationCore`
+- All modules already emit XP through the shared emitXP — gamification is the core pipeline
+
+**Compliance with Spec Principles:**
+✅ Gamification is the CORE (not decorative) — all XP flows through emitXP
+✅ Shared XP Engine — centralized in emit-xp.ts
+✅ Class System — auto-assigned, dynamic, hybrid support
+✅ Quest System — generator, pool, scheduler, evaluator, UI
+✅ Achievement Engine — server-side checking, auto-unlock
+✅ Integration hooks — useGainXP, useQuestEngine, useGamificationCore
+✅ Module integration — all actions flow through gamification core
