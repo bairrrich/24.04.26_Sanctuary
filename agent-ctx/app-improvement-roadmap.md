@@ -185,4 +185,5 @@
 - ✅ Добавлен блок **Today Focus** в Feed с быстрыми действиями (заметка/тренировка/расход).
 - ✅ Добавлена кнопка-активатор command palette на desktop (discoverability + shortcut hint).
 - ✅ Добавлен базовый **Activation checklist** (3 шага) в Feed с прогресс-баром.
+- ✅ Для activation checklist добавлены **dismiss/reset** сценарии.
 - ⏭️ AI-направление и retention/монетизация намеренно пропущены в этой итерации.

@@ -15,6 +15,7 @@ interface AppState {
     firstWorkout: boolean;
     firstExpense: boolean;
   };
+  activationChecklistDismissed: boolean;
   /** Whether the "more" menu is open on mobile */
   moreMenuOpen: boolean;
   /** Whether sidebar is collapsed on desktop */
@@ -23,6 +24,8 @@ interface AppState {
   // Actions
   setActiveModule: (module: ModuleId) => void;
   markChecklistDone: (item: 'feedNote' | 'firstWorkout' | 'firstExpense') => void;
+  dismissChecklist: () => void;
+  resetChecklist: () => void;
   setMoreMenuOpen: (open: boolean) => void;
   toggleSidebar: () => void;
 }
@@ -54,6 +57,7 @@ export const useAppStore = create<AppState>()(
         firstWorkout: false,
         firstExpense: false,
       },
+      activationChecklistDismissed: false,
       moreMenuOpen: false,
       sidebarCollapsed: false,
 
@@ -79,6 +83,18 @@ export const useAppStore = create<AppState>()(
           },
         })),
 
+      dismissChecklist: () => set({ activationChecklistDismissed: true }),
+
+      resetChecklist: () =>
+        set({
+          activationChecklist: {
+            feedNote: false,
+            firstWorkout: false,
+            firstExpense: false,
+          },
+          activationChecklistDismissed: false,
+        }),
+
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),
@@ -89,6 +105,7 @@ export const useAppStore = create<AppState>()(
         moduleUsage: state.moduleUsage,
         recentModules: state.recentModules,
         activationChecklist: state.activationChecklist,
+        activationChecklistDismissed: state.activationChecklistDismissed,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
     }
