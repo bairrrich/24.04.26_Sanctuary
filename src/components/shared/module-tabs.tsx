@@ -32,7 +32,7 @@ export function ModuleTabs({
             <TabsTrigger
               key={tab.id}
               value={tab.id}
-              className="flex items-center gap-1.5 text-xs data-[state=active]:shadow-sm shrink-0"
+              className="text-caption flex items-center gap-1.5 data-[state=active]:shadow-sm shrink-0"
               style={
                 activeTab === tab.id && accentColor
                   ? {

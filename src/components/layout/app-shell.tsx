@@ -1,15 +1,19 @@
 'use client';
 
+import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { MODULE_REGISTRY } from '@/lib/module-config';
 import { ANIMATION } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
 import { Sidebar } from './sidebar';
 import { MobileNavbar } from './mobile-navbar';
 import { XPNotification } from '@/components/shared/xp-notification';
 import { AuthPage } from '@/components/auth/auth-page';
+import { CommandPalette } from './command-palette';
 import type { ModuleId } from '@/types';
 
 // Lazy-load all module pages to reduce initial bundle size and memory usage
@@ -54,6 +58,20 @@ export function AppShell() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const isInitialized = useAuthStore((s) => s.isInitialized);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const moduleFromUrl = params.get('module');
+    if (moduleFromUrl && moduleFromUrl in MODULE_REGISTRY) {
+      setActiveModule(moduleFromUrl as ModuleId);
+    }
+  }, [setActiveModule]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('module', activeModule);
+    window.history.replaceState({}, '', url.toString());
+  }, [activeModule]);
+
   // Show auth page if not authenticated and not guest
   // Only show auth after initialization to avoid flash
   if (isInitialized && !isAuthenticated && !isGuest) {
@@ -93,6 +111,22 @@ export function AppShell() {
 
       {/* XP Notification Overlay */}
       <XPNotification />
+
+      {/* Discoverability button for command palette (desktop) */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="fixed right-4 top-3 z-50 hidden items-center gap-2 text-xs lg:flex"
+        onClick={() => window.dispatchEvent(new Event('command-palette:open'))}
+      >
+        <Search className="h-3.5 w-3.5" />
+        <span>Search</span>
+        <kbd className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
+      </Button>
+
+      {/* Global command palette (Cmd/Ctrl + K) */}
+      <CommandPalette />
     </div>
   );
 }

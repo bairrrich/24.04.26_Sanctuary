@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Palette, Globe, Ruler, Database, Info } from 'lucide-react';
 import { PageHeader, ModuleTabs } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
+import { SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { t } from '@/lib/i18n';
 import { ThemeSettings } from './theme-settings';
@@ -43,7 +44,7 @@ export function SettingsPage() {
         accentColor={moduleConfig.accentColor}
       />
 
-      <div className="px-4 sm:px-6 py-4 space-y-4">
+      <div className={`${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         <ModuleTabs
           tabs={tabs}
           activeTab={activeTab}
