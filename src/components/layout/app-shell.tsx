@@ -3,11 +3,13 @@
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/app-store';
+import { useAuthStore } from '@/store/auth-store';
 import { MODULE_REGISTRY } from '@/lib/module-config';
 import { ANIMATION } from '@/lib/constants';
 import { Sidebar } from './sidebar';
 import { MobileNavbar } from './mobile-navbar';
 import { XPNotification } from '@/components/shared/xp-notification';
+import { AuthPage } from '@/components/auth/auth-page';
 import type { ModuleId } from '@/types';
 
 // Lazy-load all module pages to reduce initial bundle size and memory usage
@@ -48,9 +50,17 @@ const MODULE_COMPONENTS: Record<ModuleId, React.ComponentType> = {
 export function AppShell() {
   const activeModule = useAppStore((s) => s.activeModule);
   const setActiveModule = useAppStore((s) => s.setActiveModule);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+
+  // Show auth page if not authenticated and not guest
+  // Only show auth after initialization to avoid flash
+  if (isInitialized && !isAuthenticated && !isGuest) {
+    return <AuthPage />;
+  }
 
   const ActiveComponent = MODULE_COMPONENTS[activeModule];
-  const moduleConfig = MODULE_REGISTRY[activeModule];
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">

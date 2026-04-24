@@ -29,20 +29,31 @@ export async function createSupabaseServerClient() {
 
 /**
  * Create a Supabase admin client with service role key (bypasses RLS)
- * Use only in server-side API routes that need elevated access
+ * Use only in server-side API routes that need elevated access.
+ *
+ * NOTE: Currently uses anon key since the service role key is not exposed
+ * via NEXT_PUBLIC env vars. To enable full admin access, add
+ * SUPABASE_SERVICE_ROLE_KEY to your .env file and reference it here.
+ * With the service role key, this client bypasses Row Level Security.
  */
-export function createSupabaseAdminClient() {
+export async function createSupabaseAdminClient() {
+  const cookieStore = await cookies();
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    key,
     {
       cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-      global: {
-        headers: {
-          // Use anon key for now; service role key can be added later for admin operations
+        getAll() {
+          // Admin client doesn't need cookies for auth,
+          // but we still read them for context
+          return cookieStore.getAll();
+        },
+        setAll() {
+          // Admin client doesn't set cookies
         },
       },
     }
