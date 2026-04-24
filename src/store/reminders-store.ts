@@ -23,6 +23,7 @@ interface RemindersState {
   loadReminders: (includeCompleted?: boolean) => Promise<void>;
   addReminder: (data: Partial<ReminderItem>) => Promise<void>;
   completeReminder: (id: string) => Promise<void>;
+  updateReminder: (id: string, data: Partial<ReminderItem>) => Promise<void>;
   deleteReminder: (id: string) => Promise<void>;
 }
 
@@ -71,6 +72,24 @@ export const useRemindersStore = create<RemindersState>()((set) => ({
         }));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('gamification:updated'));
+        }
+      }
+    } catch { /* empty */ }
+  },
+
+  updateReminder: async (id, data) => {
+    try {
+      const res = await fetch(`/api/reminders/reminders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.reminder) {
+          set((s) => ({
+            reminders: s.reminders.map((r) => (r.id === id ? d.reminder : r)),
+          }));
         }
       }
     } catch { /* empty */ }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
 import { PageHeader, ModuleTabs, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
+import { SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { useGamificationStore } from '@/store/gamification-store';
 import { CharacterProfile } from './character-profile';
@@ -85,7 +86,7 @@ export function GamificationPage() {
         subtitle={language === 'ru' ? 'Достижения, уровни, квесты' : 'Achievements, levels, quests'}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         {/* Character Profile — always visible */}
         <CharacterProfile />
 

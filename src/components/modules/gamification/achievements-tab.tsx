@@ -128,7 +128,10 @@ export function AchievementsTab() {
   }, []);
 
   useEffect(() => {
-    fetchAchievements();
+    const timer = window.setTimeout(() => {
+      void fetchAchievements();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchAchievements]);
 
   // Listen for gamification updates to refresh achievements
