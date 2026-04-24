@@ -1,16 +1,21 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BookOpen,
-  Trash2,
-  Edit3,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Edit3,
+  Eye,
   Flame,
-  CalendarDays,
   PenLine,
+  Plus,
+  Search,
+  Sparkles,
+  Tag,
+  Trash2,
 } from 'lucide-react';
 import { PageHeader, ModuleTabs, FAB, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
@@ -18,13 +23,22 @@ import { ANIMATION, SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { useDiaryStore, type DiaryEntry } from '@/store/diary-store';
 import { useGamificationStore } from '@/store/gamification-store';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { TabItem } from '@/types';
-
-// ==================== Constants ====================
 
 const MOOD_OPTIONS = [
   { value: 'great', emoji: '😊', labelEn: 'Great', labelRu: 'Отлично' },
@@ -34,31 +48,22 @@ const MOOD_OPTIONS = [
   { value: 'terrible', emoji: '😢', labelEn: 'Terrible', labelRu: 'Ужасно' },
 ] as const;
 
-const ACCENT_COLOR = MODULE_REGISTRY.diary.accentColor;
-
-// ==================== Helpers ====================
-
 function getTodayString(): string {
   const now = new Date();
-  return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 function formatDate(dateStr: string, language: 'en' | 'ru'): string {
-  const date = new Date(dateStr + 'T00:00:00');
+  const date = new Date(`${dateStr}T00:00:00`);
   const today = getTodayString();
-  const yesterday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  })();
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDate.getDate()).padStart(2, '0')}`;
 
   if (dateStr === today) return language === 'ru' ? 'Сегодня' : 'Today';
   if (dateStr === yesterday) return language === 'ru' ? 'Вчера' : 'Yesterday';
 
-  return date.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', {
-    day: 'numeric',
-    month: 'short',
-  });
+  return date.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function getMoodEmoji(mood: string | null): string {
@@ -67,18 +72,22 @@ function getMoodEmoji(mood: string | null): string {
 
 function getMoodLabel(mood: string | null, language: 'en' | 'ru'): string {
   if (!mood) return language === 'ru' ? 'Без настроения' : 'No mood';
-  const opt = MOOD_OPTIONS.find((m) => m.value === mood);
-  if (!opt) return mood;
-  return language === 'ru' ? opt.labelRu : opt.labelEn;
+  const option = MOOD_OPTIONS.find((m) => m.value === mood);
+  if (!option) return mood;
+  return language === 'ru' ? option.labelRu : option.labelEn;
 }
 
 function getMonthDays(year: number, month: number): string[] {
   const days: string[] = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let d = 1; d <= daysInMonth; d++) {
-    days.push(year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'));
+    days.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
   }
   return days;
+}
+
+function readingMinutes(content: string): number {
+  return Math.max(1, Math.ceil(content.trim().split(/\s+/).length / 220));
 }
 
 const MONTH_NAMES_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -86,44 +95,32 @@ const MONTH_NAMES_RU = ['Январь', 'Февраль', 'Март', 'Апре�
 const DAY_NAMES_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_NAMES_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-// ==================== Inline Spinner ====================
-
-function InlineSpinner() {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-    </div>
-  );
-}
-
-// ==================== Main Component ====================
-
 export function DiaryPage() {
   const language = useSettingsStore((s) => s.language);
   const config = MODULE_REGISTRY.diary;
-  const { entries, isLoading, loadEntries, selectedDate, setSelectedDate } = useDiaryStore();
+  const { entries, isLoading, loadEntries, selectedDate, setSelectedDate, createEntry, updateEntry, deleteEntry } = useDiaryStore();
   const loadCharacter = useGamificationStore((s) => s.loadCharacter);
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState('entries');
-  const [showCreateSheet, setShowCreateSheet] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [viewingEntry, setViewingEntry] = useState<DiaryEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
+  const [deletingEntry, setDeletingEntry] = useState<DiaryEntry | null>(null);
 
-  // Load entries for the current month on mount
   const today = getTodayString();
-  const currentMonthStart = today.substring(0, 8) + '01';
+  const currentMonthStart = `${today.substring(0, 8)}01`;
   const currentMonthEnd = (() => {
     const d = new Date(parseInt(today.substring(0, 4)), parseInt(today.substring(5, 7)), 0);
-    return today.substring(0, 8) + String(d.getDate()).padStart(2, '0');
+    return `${today.substring(0, 8)}${String(d.getDate()).padStart(2, '0')}`;
   })();
 
   useEffect(() => {
     loadEntries(currentMonthStart, currentMonthEnd);
   }, [loadEntries, currentMonthStart, currentMonthEnd]);
 
-  // Listen for gamification updates from other modules
   useEffect(() => {
-    const handler = () => {
-      loadCharacter();
-    };
+    const handler = () => loadCharacter();
     window.addEventListener('gamification:updated', handler);
     return () => window.removeEventListener('gamification:updated', handler);
   }, [loadCharacter]);
@@ -137,314 +134,286 @@ export function DiaryPage() {
   const hasTodayEntry = entries.some((e) => e.date === today);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <PageHeader
         title={language === 'ru' ? 'Дневник' : 'Diary'}
         icon={BookOpen}
         accentColor={config.accentColor}
-        subtitle={
-          entries.length > 0
-            ? `${entries.length} ${language === 'ru' ? 'записей' : 'entries'}`
-            : language === 'ru' ? 'Ваши мысли и записи' : 'Your thoughts and entries'
-        }
+        subtitle={entries.length > 0 ? `${entries.length} ${language === 'ru' ? 'записей' : 'entries'}` : language === 'ru' ? 'Ваши мысли и записи' : 'Your thoughts and entries'}
       />
 
       <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
-        {/* Show empty state only on first load with no entries and on entries tab */}
-        {!isLoading && entries.length === 0 && activeTab === 'entries' ? (
-          <>
-            <ModuleTabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              accentColor={config.accentColor}
-            />
-            <EmptyState
-              icon={BookOpen}
-              title={language === 'ru' ? 'Нет записей' : 'No entries yet'}
-              description={
-                language === 'ru'
-                  ? 'Начните писать дневник, чтобы отслеживать свои мысли'
-                  : 'Start journaling to track your thoughts and reflections'
-              }
-              accentColor={config.accentColor}
-              actionLabel={language === 'ru' ? 'Написать запись' : 'Write entry'}
-              onAction={() => setShowCreateSheet(true)}
-            />
-          </>
-        ) : (
-          <>
-            {/* Always show tabs — never hide them during loading */}
-            <ModuleTabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              accentColor={config.accentColor}
-            />
+        <ModuleTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} accentColor={config.accentColor} />
 
-            {/* Tab content — instant switching, no AnimatePresence mode="wait" */}
-            {activeTab === 'entries' && (
-              <EntriesTab
-                entries={entries}
-                isLoading={isLoading}
-                language={language}
-                accentColor={config.accentColor}
-                onEditEntry={(entry) => {
-                  setSelectedDate(entry.date);
-                }}
-              />
-            )}
-            {activeTab === 'calendar' && (
-              <CalendarTab
-                entries={entries}
-                language={language}
-                accentColor={config.accentColor}
-                selectedDate={selectedDate}
-                onDateSelect={(date) => {
-                  setSelectedDate(date);
-                  setActiveTab('entries');
-                }}
-                onNewEntry={(date) => {
-                  setSelectedDate(date);
-                  setShowCreateSheet(true);
-                }}
-              />
-            )}
-            {activeTab === 'analytics' && (
-              <AnalyticsTab
-                entries={entries}
-                language={language}
-                accentColor={config.accentColor}
-              />
-            )}
-          </>
+        {!isLoading && entries.length === 0 && activeTab === 'entries' ? (
+          <EmptyState
+            icon={BookOpen}
+            title={language === 'ru' ? 'Нет записей' : 'No entries yet'}
+            description={language === 'ru' ? 'Начните писать дневник, чтобы отслеживать мысли, эмоции и события.' : 'Start journaling to track thoughts, feelings, and key moments.'}
+            accentColor={config.accentColor}
+            actionLabel={language === 'ru' ? 'Создать запись' : 'Create entry'}
+            onAction={() => setCreateOpen(true)}
+          />
+        ) : null}
+
+        {activeTab === 'entries' && (
+          <EntriesTab
+            entries={entries}
+            isLoading={isLoading}
+            hasTodayEntry={hasTodayEntry}
+            language={language}
+            accentColor={config.accentColor}
+            onCreate={() => setCreateOpen(true)}
+            onView={setViewingEntry}
+            onEdit={setEditingEntry}
+            onDelete={setDeletingEntry}
+          />
+        )}
+
+        {activeTab === 'calendar' && (
+          <CalendarTab
+            entries={entries}
+            language={language}
+            accentColor={config.accentColor}
+            selectedDate={selectedDate}
+            onDateSelect={(date) => setSelectedDate(date)}
+            onOpenEntry={setViewingEntry}
+            onCreate={(date) => {
+              setSelectedDate(date);
+              setCreateOpen(true);
+            }}
+          />
+        )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab entries={entries} language={language} accentColor={config.accentColor} />
         )}
       </div>
 
-      <FAB
-        accentColor={config.accentColor}
-        onClick={() => setShowCreateSheet(true)}
-      />
+      <FAB accentColor={config.accentColor} onClick={() => setCreateOpen(true)} />
 
-      <CreateEntrySheet
-        open={showCreateSheet}
-        onClose={() => setShowCreateSheet(false)}
+      <EntryFormDialog
+        key={`create-${selectedDate}-${createOpen ? 'open' : 'closed'}`}
+        open={createOpen}
+        mode="create"
         language={language}
         accentColor={config.accentColor}
-        defaultDate={selectedDate}
+        defaultDate={selectedDate || today}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (payload) => {
+          const xp = await createEntry(payload);
+          const total = xp?.reduce((sum, item) => sum + item.amount, 0) ?? 0;
+          toast({
+            title: language === 'ru' ? 'Запись создана' : 'Entry created',
+            description: total > 0 ? `+${total} XP` : undefined,
+          });
+        }}
       />
+
+      <EntryFormDialog
+        key={`edit-${editingEntry?.id ?? 'none'}-${editingEntry?.updatedAt ?? ''}`}
+        open={!!editingEntry}
+        mode="edit"
+        language={language}
+        accentColor={config.accentColor}
+        entry={editingEntry ?? undefined}
+        onClose={() => setEditingEntry(null)}
+        onSubmit={async (payload) => {
+          if (!editingEntry) return;
+          await updateEntry(editingEntry.id, payload);
+          toast({ title: language === 'ru' ? 'Изменения сохранены' : 'Changes saved' });
+          setViewingEntry((current) => (current?.id === editingEntry.id ? { ...current, ...payload } as DiaryEntry : current));
+        }}
+      />
+
+      <ViewEntryDialog
+        open={!!viewingEntry}
+        entry={viewingEntry}
+        language={language}
+        accentColor={config.accentColor}
+        onClose={() => setViewingEntry(null)}
+        onEdit={() => {
+          if (viewingEntry) setEditingEntry(viewingEntry);
+        }}
+      />
+
+      <AlertDialog open={!!deletingEntry} onOpenChange={(v) => !v && setDeletingEntry(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{language === 'ru' ? 'Удалить запись?' : 'Delete this entry?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === 'ru' ? 'Действие нельзя отменить. Запись будет удалена навсегда.' : 'This action cannot be undone. The entry will be permanently removed.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{language === 'ru' ? 'Отмена' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deletingEntry) return;
+                await deleteEntry(deletingEntry.id);
+                toast({ title: language === 'ru' ? 'Запись удалена' : 'Entry deleted' });
+                setViewingEntry((current) => (current?.id === deletingEntry.id ? null : current));
+                setDeletingEntry(null);
+              }}
+            >
+              {language === 'ru' ? 'Удалить' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-// ==================== Entries Tab ====================
-
 function EntriesTab({
   entries,
   isLoading,
+  hasTodayEntry,
   language,
   accentColor,
-  onEditEntry,
+  onCreate,
+  onView,
+  onEdit,
+  onDelete,
 }: {
   entries: DiaryEntry[];
   isLoading: boolean;
+  hasTodayEntry: boolean;
   language: 'en' | 'ru';
   accentColor: string;
-  onEditEntry: (entry: DiaryEntry) => void;
+  onCreate: () => void;
+  onView: (entry: DiaryEntry) => void;
+  onEdit: (entry: DiaryEntry) => void;
+  onDelete: (entry: DiaryEntry) => void;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
-  const deleteEntry = useDiaryStore((s) => s.deleteEntry);
-  const today = getTodayString();
-  const hasTodayEntry = entries.some((e) => e.date === today);
+  const [search, setSearch] = useState('');
+  const [moodFilter, setMoodFilter] = useState<'all' | string>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'longest'>('newest');
+
+  const filteredEntries = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const list = entries.filter((entry) => {
+      const moodOk = moodFilter === 'all' ? true : entry.mood === moodFilter;
+      const textOk = !term
+        ? true
+        : `${entry.title ?? ''} ${entry.content} ${(entry.tags ?? []).join(' ')}`.toLowerCase().includes(term);
+      return moodOk && textOk;
+    });
+
+    if (sortBy === 'newest') return list.sort((a, b) => b.date.localeCompare(a.date));
+    if (sortBy === 'oldest') return list.sort((a, b) => a.date.localeCompare(b.date));
+    return list.sort((a, b) => b.content.length - a.content.length);
+  }, [entries, moodFilter, search, sortBy]);
 
   if (isLoading && entries.length === 0) {
-    return <InlineSpinner />;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-3"
-    >
-      {/* Today's prompt */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       {!hasTodayEntry && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border-2 border-dashed p-5 text-center space-y-3"
-          style={{ borderColor: `${accentColor}40` }}
-        >
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-2xl mx-auto"
-            style={{ backgroundColor: `${accentColor}15` }}
-          >
+        <div className="rounded-2xl border-2 border-dashed p-5 text-center" style={{ borderColor: `${accentColor}45` }}>
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl" style={{ backgroundColor: `${accentColor}15` }}>
             <PenLine className="h-6 w-6" style={{ color: accentColor }} />
           </div>
-          <p className="text-sm font-medium">
-            {language === 'ru' ? 'Как прошёл ваш день?' : 'How was your day?'}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {language === 'ru'
-              ? 'Запишите свои мысли и получите XP за рефлексию'
-              : 'Write down your thoughts and earn XP for reflection'}
-          </p>
-        </motion.div>
+          <p className="text-sm font-semibold">{language === 'ru' ? 'Как прошёл ваш день?' : 'How was your day?'}</p>
+          <p className="mb-3 text-xs text-muted-foreground">{language === 'ru' ? 'Создайте запись и зафиксируйте главное.' : 'Capture today with a meaningful reflection.'}</p>
+          <Button onClick={onCreate} style={{ backgroundColor: accentColor }}>
+            <Plus className="mr-2 h-4 w-4" />
+            {language === 'ru' ? 'Написать сейчас' : 'Write now'}
+          </Button>
+        </div>
       )}
 
-      {/* Entries list */}
-      {entries.map((entry, i) => (
-        <EntryCard
-          key={entry.id}
-          entry={entry}
-          language={language}
-          accentColor={accentColor}
-          isExpanded={expandedId === entry.id}
-          onToggleExpand={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-          onEdit={() => setEditingEntry(entry)}
-          onDelete={() => deleteEntry(entry.id)}
-          index={i}
-        />
-      ))}
-
-      {/* Edit Sheet */}
-      <Sheet open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{language === 'ru' ? 'Редактировать запись' : 'Edit Entry'}</SheetTitle>
-          </SheetHeader>
-          {editingEntry && (
-            <EditEntryForm
-              entry={editingEntry}
-              onClose={() => setEditingEntry(null)}
-              language={language}
-              accentColor={accentColor}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
-    </motion.div>
-  );
-}
-
-// ==================== Entry Card ====================
-
-function EntryCard({
-  entry,
-  language,
-  accentColor,
-  isExpanded,
-  onToggleExpand,
-  onEdit,
-  onDelete,
-  index,
-}: {
-  entry: DiaryEntry;
-  language: 'en' | 'ru';
-  accentColor: string;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  index: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * ANIMATION.STAGGER_DELAY, ...ANIMATION.SPRING_GENTLE }}
-    >
-      <button
-        onClick={onToggleExpand}
-        className="w-full text-left rounded-xl border bg-card p-4 transition-all hover:bg-muted/30 active:scale-[0.99]"
-      >
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
-            style={{ backgroundColor: `${accentColor}12` }}
-          >
-            {getMoodEmoji(entry.mood)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium" style={{ color: accentColor }}>
-                {formatDate(entry.date, language)}
-              </span>
-              {entry.mood && (
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  {getMoodLabel(entry.mood, language)}
-                </span>
-              )}
-            </div>
-            {entry.title ? (
-              <p className="text-sm font-semibold mt-0.5 truncate">{entry.title}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                {entry.content.substring(0, 120)}{entry.content.length > 120 ? '...' : ''}
-              </p>
-            )}
-          </div>
+      <div className="rounded-xl border bg-card p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            placeholder={language === 'ru' ? 'Поиск по тексту, заголовку и тегам' : 'Search text, title, and tags'}
+          />
         </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <select value={moodFilter} onChange={(e) => setMoodFilter(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
+            <option value="all">{language === 'ru' ? 'Все настроения' : 'All moods'}</option>
+            {MOOD_OPTIONS.map((m) => (
+              <option key={m.value} value={m.value}>{m.emoji} {language === 'ru' ? m.labelRu : m.labelEn}</option>
+            ))}
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'longest')} className="h-10 rounded-md border bg-background px-3 text-sm">
+            <option value="newest">{language === 'ru' ? 'Сначала новые' : 'Newest first'}</option>
+            <option value="oldest">{language === 'ru' ? 'Сначала старые' : 'Oldest first'}</option>
+            <option value="longest">{language === 'ru' ? 'Сначала длинные' : 'Longest first'}</option>
+          </select>
+        </div>
+      </div>
 
-        {/* Expanded content */}
-        {isExpanded && (
-          <div className="overflow-hidden">
-            <div className="mt-3 pt-3 border-t space-y-3">
-              {entry.title && (
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {entry.content}
-                </p>
-              )}
-              {entry.tags && entry.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+      {filteredEntries.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          {language === 'ru' ? 'По выбранным фильтрам записи не найдены.' : 'No entries found for selected filters.'}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredEntries.map((entry, i) => (
+            <motion.div
+              key={entry.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * ANIMATION.STAGGER_DELAY, ...ANIMATION.SPRING_GENTLE }}
+              className="rounded-xl border bg-card p-4"
+            >
+              <div className="mb-3 flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: `${accentColor}15` }}>
+                  {getMoodEmoji(entry.mood)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold" style={{ color: accentColor }}>{formatDate(entry.date, language)}</span>
+                    <span className="text-xs text-muted-foreground">• {readingMinutes(entry.content)} {language === 'ru' ? 'мин' : 'min'}</span>
+                  </div>
+                  <p className="truncate text-sm font-semibold">{entry.title || (language === 'ru' ? 'Без заголовка' : 'Untitled')}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{entry.content}</p>
+                </div>
+              </div>
+
+              {entry.tags.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1">
                   {entry.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: `${accentColor}12`, color: accentColor }}
-                    >
+                    <span key={tag} className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${accentColor}14`, color: accentColor }}>
                       #{tag}
                     </span>
                   ))}
                 </div>
               )}
+
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit();
-                  }}
-                  className="h-8 gap-1.5 text-xs"
-                >
-                  <Edit3 className="h-3 w-3" />
+                <Button size="sm" variant="secondary" className="h-8 gap-1.5 text-xs" onClick={() => onView(entry)}>
+                  <Eye className="h-3.5 w-3.5" />
+                  {language === 'ru' ? 'Просмотр' : 'View'}
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => onEdit(entry)}>
+                  <Edit3 className="h-3.5 w-3.5" />
                   {language === 'ru' ? 'Редактировать' : 'Edit'}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-3 w-3" />
+                <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(entry)}>
+                  <Trash2 className="h-3.5 w-3.5" />
                   {language === 'ru' ? 'Удалить' : 'Delete'}
                 </Button>
               </div>
-            </div>
-          </div>
-        )}
-      </button>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
-
-// ==================== Calendar Tab ====================
 
 function CalendarTab({
   entries,
@@ -452,320 +421,176 @@ function CalendarTab({
   accentColor,
   selectedDate,
   onDateSelect,
-  onNewEntry,
+  onOpenEntry,
+  onCreate,
 }: {
   entries: DiaryEntry[];
   language: 'en' | 'ru';
   accentColor: string;
   selectedDate: string;
   onDateSelect: (date: string) => void;
-  onNewEntry: (date: string) => void;
+  onOpenEntry: (entry: DiaryEntry) => void;
+  onCreate: (date: string) => void;
 }) {
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const loadEntries = useDiaryStore((s) => s.loadEntries);
+
+  useEffect(() => {
+    const monthStart = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const monthEnd = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+    loadEntries(monthStart, monthEnd);
+  }, [loadEntries, viewYear, viewMonth]);
 
   const entryDates = new Set(entries.map((e) => e.date));
   const days = getMonthDays(viewYear, viewMonth);
   const monthName = language === 'ru' ? MONTH_NAMES_RU[viewMonth] : MONTH_NAMES_EN[viewMonth];
   const dayNames = language === 'ru' ? DAY_NAMES_RU : DAY_NAMES_EN;
 
-  // Calculate day of week for the 1st of the month (0=Sun, 1=Mon, ...)
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
-  // Convert to Monday-first: Mon=0, Tue=1, ..., Sun=6
   const offset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-
-  const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
-    }
-  };
-
-  const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
-    }
-  };
-
   const today = getTodayString();
 
-  // Load entries for the viewed month when it changes
-  const loadEntries = useDiaryStore((s) => s.loadEntries);
-  useEffect(() => {
-    const monthStart = viewYear + '-' + String(viewMonth + 1).padStart(2, '0') + '-01';
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const monthEnd = viewYear + '-' + String(viewMonth + 1).padStart(2, '0') + '-' + String(daysInMonth).padStart(2, '0');
-    loadEntries(monthStart, monthEnd);
-  }, [viewYear, viewMonth, loadEntries]);
+  const selectedEntries = entries.filter((e) => e.date === selectedDate);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-4"
-    >
-      {/* Month navigation */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={() => (viewMonth === 0 ? (setViewMonth(11), setViewYear(viewYear - 1)) : setViewMonth(viewMonth - 1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="text-center">
-          <p className="text-sm font-semibold">
-            {monthName} {viewYear}
-          </p>
-        </div>
-        <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8">
+        <p className="text-sm font-semibold">{monthName} {viewYear}</p>
+        <Button variant="ghost" size="icon" onClick={() => (viewMonth === 11 ? (setViewMonth(0), setViewYear(viewYear + 1)) : setViewMonth(viewMonth + 1))}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Day names header */}
       <div className="grid grid-cols-7 gap-1">
         {dayNames.map((name) => (
-          <div key={name} className="text-center text-[10px] font-medium text-muted-foreground py-1">
-            {name}
-          </div>
+          <div key={name} className="py-1 text-center text-[10px] font-medium text-muted-foreground">{name}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1">
-        {/* Empty cells for offset */}
-        {Array.from({ length: offset }).map((_, i) => (
-          <div key={`empty-${i}`} className="aspect-square" />
-        ))}
-
-        {/* Day cells */}
+        {Array.from({ length: offset }).map((_, i) => <div key={`empty-${i}`} className="aspect-square" />)}
         {days.map((dateStr) => {
-          const day = parseInt(dateStr.substring(8));
           const hasEntry = entryDates.has(dateStr);
           const isToday = dateStr === today;
           const isSelected = dateStr === selectedDate;
-
-          // Find mood for this day's entry
-          const dayEntry = entries.find((e) => e.date === dateStr);
+          const oneEntry = entries.find((e) => e.date === dateStr);
 
           return (
             <button
               key={dateStr}
-              onClick={() => {
-                onDateSelect(dateStr);
-                if (!hasEntry) {
-                  onNewEntry(dateStr);
-                }
-              }}
-              className={`
-                aspect-square flex flex-col items-center justify-center rounded-lg text-sm transition-all relative
-                ${isToday ? 'font-bold' : ''}
-                ${hasEntry ? 'cursor-pointer' : 'cursor-pointer opacity-60 hover:opacity-100'}
-                ${isSelected ? 'ring-2' : ''}
-              `}
-              style={{
-                backgroundColor: hasEntry ? `${accentColor}15` : isSelected ? `${accentColor}08` : 'transparent',
-                ...(isSelected ? { '--tw-ring-color': accentColor } as React.CSSProperties : {}),
-              }}
+              onClick={() => onDateSelect(dateStr)}
+              className="relative aspect-square rounded-lg text-sm"
+              style={{ backgroundColor: hasEntry ? `${accentColor}15` : isSelected ? `${accentColor}0F` : 'transparent' }}
             >
-              <span className={isToday ? '' : ''} style={isToday ? { color: accentColor } : undefined}>
-                {day}
-              </span>
-              {hasEntry && (
-                <div className="flex items-center gap-0.5 mt-0.5">
-                  <div
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: accentColor }}
-                  />
-                  {dayEntry?.mood && (
-                    <span className="text-[8px] leading-none">
-                      {getMoodEmoji(dayEntry.mood)}
-                    </span>
-                  )}
-                </div>
-              )}
+              <span className={isToday ? 'font-bold' : ''} style={isToday ? { color: accentColor } : undefined}>{dateStr.substring(8)}</span>
+              {hasEntry && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px]">{getMoodEmoji(oneEntry?.mood ?? null)}</span>}
             </button>
           );
         })}
       </div>
 
-      {/* Selected day info */}
-      {selectedDate && (
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            {formatDate(selectedDate, language)}
-          </p>
-          {entries.filter((e) => e.date === selectedDate).map((entry) => (
-            <div key={entry.id} className="flex items-start gap-2">
-              <span className="text-base">{getMoodEmoji(entry.mood)}</span>
-              <div className="flex-1 min-w-0">
-                {entry.title && (
-                  <p className="text-sm font-medium truncate">{entry.title}</p>
-                )}
-                <p className="text-xs text-muted-foreground line-clamp-2">{entry.content}</p>
-              </div>
-            </div>
-          ))}
-          {!entries.some((e) => e.date === selectedDate) && (
-            <p className="text-xs text-muted-foreground">
-              {language === 'ru' ? 'Нет записи на этот день' : 'No entry for this day'}
-            </p>
-          )}
-        </div>
-      )}
+      <div className="rounded-xl border bg-card p-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{formatDate(selectedDate, language)}</p>
+        {selectedEntries.length === 0 ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{language === 'ru' ? 'На этот день записи нет.' : 'No entry for this day.'}</p>
+            <Button onClick={() => onCreate(selectedDate)} style={{ backgroundColor: accentColor }}>
+              <Plus className="mr-2 h-4 w-4" />
+              {language === 'ru' ? 'Создать запись' : 'Create entry'}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {selectedEntries.map((entry) => (
+              <button key={entry.id} onClick={() => onOpenEntry(entry)} className="w-full rounded-lg border bg-background p-3 text-left">
+                <p className="truncate text-sm font-medium">{entry.title || (language === 'ru' ? 'Без заголовка' : 'Untitled')}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{entry.content}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
 
-// ==================== Analytics Tab ====================
-
-function AnalyticsTab({
-  entries,
-  language,
-  accentColor,
-}: {
-  entries: DiaryEntry[];
-  language: 'en' | 'ru';
-  accentColor: string;
-}) {
-  // Stats
+function AnalyticsTab({ entries, language, accentColor }: { entries: DiaryEntry[]; language: 'en' | 'ru'; accentColor: string }) {
   const totalEntries = entries.length;
-
-  const now = new Date();
-  const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const entriesThisMonth = entries.filter((e) => e.date.startsWith(currentMonth)).length;
-
-  const avgLength = totalEntries > 0
-    ? Math.round(entries.reduce((sum, e) => sum + e.content.length, 0) / totalEntries)
-    : 0;
-
-  // Most common mood
-  const moodCounts: Record<string, number> = {};
-  for (const entry of entries) {
-    if (entry.mood) {
-      moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-    }
-  }
-  const mostCommonMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-
-  // Writing streak
+  const avgLength = totalEntries ? Math.round(entries.reduce((acc, e) => acc + e.content.length, 0) / totalEntries) : 0;
   const streak = calculateStreak(entries);
 
-  // Mood distribution
-  const moodDist = MOOD_OPTIONS.map((opt) => ({
-    ...opt,
-    count: moodCounts[opt.value] || 0,
-  }));
-  const maxMoodCount = Math.max(...moodDist.map((m) => m.count), 1);
-
-  const stats = [
-    {
-      label: language === 'ru' ? 'Всего записей' : 'Total Entries',
-      value: totalEntries,
-      icon: '📝',
-    },
-    {
-      label: language === 'ru' ? 'В этом месяце' : 'This Month',
-      value: entriesThisMonth,
-      icon: '📅',
-    },
-    {
-      label: language === 'ru' ? 'Средняя длина' : 'Avg Length',
-      value: avgLength > 0 ? `${avgLength}` : '0',
-      icon: '📏',
-    },
-    {
-      label: language === 'ru' ? 'Серия дней' : 'Writing Streak',
-      value: streak,
-      icon: '🔥',
-    },
-  ];
+  const moodCounts: Record<string, number> = {};
+  entries.forEach((entry) => {
+    if (entry.mood) moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+  });
+  const mostCommonMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-4"
-    >
-      {/* Stats Grid */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.08, ...ANIMATION.SPRING_GENTLE }}
-            className="rounded-xl border bg-card p-3 text-center"
-          >
-            <span className="text-xl">{stat.icon}</span>
-            <p className="text-lg font-bold mt-1">{stat.value}</p>
-            <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-          </motion.div>
+        {[
+          { label: language === 'ru' ? 'Всего' : 'Total', value: totalEntries, icon: '📝' },
+          { label: language === 'ru' ? 'В месяце' : 'This month', value: entriesThisMonth, icon: '📅' },
+          { label: language === 'ru' ? 'Ср. длина' : 'Avg length', value: avgLength, icon: '📏' },
+          { label: language === 'ru' ? 'Серия' : 'Streak', value: streak, icon: '🔥' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border bg-card p-3 text-center">
+            <span className="text-xl">{item.icon}</span>
+            <p className="text-lg font-bold">{item.value}</p>
+            <p className="text-[10px] text-muted-foreground">{item.label}</p>
+          </div>
         ))}
       </div>
 
-      {/* Most Common Mood */}
       {mostCommonMood && (
         <div className="rounded-xl border bg-card p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {language === 'ru' ? 'Преобладающее настроение' : 'Most Common Mood'}
-          </span>
-          <div className="flex items-center gap-3 mt-2">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">{language === 'ru' ? 'Доминирующее настроение' : 'Dominant mood'}</p>
+          <div className="mt-2 flex items-center gap-3">
             <span className="text-3xl">{getMoodEmoji(mostCommonMood)}</span>
             <div>
-              <p className="text-sm font-medium">{getMoodLabel(mostCommonMood, language)}</p>
-              <p className="text-xs text-muted-foreground">
-                {moodCounts[mostCommonMood]} {language === 'ru' ? 'записей' : 'entries'}
-              </p>
+              <p className="text-sm font-semibold">{getMoodLabel(mostCommonMood, language)}</p>
+              <p className="text-xs text-muted-foreground">{moodCounts[mostCommonMood]} {language === 'ru' ? 'записей' : 'entries'}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Mood Distribution */}
-      <div className="rounded-xl border bg-card p-4 space-y-3">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {language === 'ru' ? 'Распределение настроений' : 'Mood Distribution'}
-        </h4>
-        {moodDist.map((mood) => (
-          <div key={mood.value} className="flex items-center gap-3">
-            <span className="text-base w-6 text-center">{mood.emoji}</span>
-            <div className="flex-1 h-5 rounded-full bg-muted overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: mood.count > 0 ? `${Math.max(8, (mood.count / maxMoodCount) * 100)}%` : '0%' }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="h-full rounded-full"
-                style={{ backgroundColor: accentColor }}
-              />
-            </div>
-            <span className="text-xs font-medium w-6 text-right">{mood.count}</span>
-          </div>
-        ))}
+      <div className="rounded-xl border bg-card p-4">
+        <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">{language === 'ru' ? 'Баланс настроения' : 'Mood balance'}</p>
+        <div className="space-y-2">
+          {MOOD_OPTIONS.map((mood) => {
+            const count = moodCounts[mood.value] || 0;
+            const pct = totalEntries > 0 ? Math.max(6, Math.round((count / totalEntries) * 100)) : 0;
+            return (
+              <div key={mood.value} className="flex items-center gap-2">
+                <span className="w-6 text-center">{mood.emoji}</span>
+                <div className="h-4 flex-1 rounded-full bg-muted">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: accentColor }} />
+                </div>
+                <span className="w-7 text-right text-xs">{count}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Streak info */}
       {streak > 0 && (
         <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ backgroundColor: `${accentColor}15` }}
-            >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${accentColor}15` }}>
               <Flame className="h-5 w-5 text-orange-500" />
             </div>
             <div>
-              <p className="text-sm font-medium">
-                {language === 'ru' ? 'Серия написания' : 'Writing Streak'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {streak} {language === 'ru'
-                  ? streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'
-                  : streak === 1 ? 'day' : 'days'}
-              </p>
+              <p className="text-sm font-semibold">{language === 'ru' ? 'Вы в ритме' : 'You are consistent'}</p>
+              <p className="text-xs text-muted-foreground">{streak} {language === 'ru' ? 'дней подряд' : 'days in a row'}</p>
             </div>
           </div>
         </div>
@@ -774,359 +599,202 @@ function AnalyticsTab({
   );
 }
 
-// ==================== Streak Calculator ====================
-
 function calculateStreak(entries: DiaryEntry[]): number {
   if (entries.length === 0) return 0;
-
-  // Get unique dates sorted descending
-  const uniqueDates = [...new Set(entries.map((e) => e.date))].sort((a, b) => b.localeCompare(a));
-
+  const uniqueDates = [...new Set(entries.map((entry) => entry.date))].sort((a, b) => b.localeCompare(a));
   const today = getTodayString();
-  const yesterday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  })();
-
-  // Streak must start from today or yesterday
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDate.getDate()).padStart(2, '0')}`;
   if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
 
   let streak = 1;
   for (let i = 1; i < uniqueDates.length; i++) {
-    const prev = new Date(uniqueDates[i - 1] + 'T00:00:00');
-    const curr = new Date(uniqueDates[i] + 'T00:00:00');
+    const prev = new Date(`${uniqueDates[i - 1]}T00:00:00`);
+    const curr = new Date(`${uniqueDates[i]}T00:00:00`);
     const diffDays = Math.round((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
-      streak++;
-    } else {
-      break;
-    }
+    if (diffDays === 1) streak += 1;
+    else break;
   }
-
   return streak;
 }
 
-// ==================== Create Entry Sheet ====================
-
-function CreateEntrySheet({
+function EntryFormDialog({
   open,
-  onClose,
+  mode,
   language,
   accentColor,
   defaultDate,
-}: {
-  open: boolean;
-  onClose: () => void;
-  language: 'en' | 'ru';
-  accentColor: string;
-  defaultDate: string;
-}) {
-  const createEntry = useDiaryStore((s) => s.createEntry);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [mood, setMood] = useState<string | null>(null);
-  const [tagsInput, setTagsInput] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [xpResult, setXpResult] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleCreate = async () => {
-    if (!content.trim()) return;
-    setIsCreating(true);
-
-    const tags = tagsInput
-      .split(',')
-      .map((t) => t.trim().replace(/^#/, ''))
-      .filter(Boolean);
-
-    const result = await createEntry({
-      date: defaultDate,
-      title: title.trim() || undefined,
-      content: content.trim(),
-      mood: mood || undefined,
-      tags: tags.length > 0 ? tags : undefined,
-    });
-
-    // Show XP notification
-    if (result && result.length > 0) {
-      const totalXP = result.reduce((sum, e) => sum + e.amount, 0);
-      setXpResult(
-        language === 'ru'
-          ? `+${totalXP} XP (Харизма)!`
-          : `+${totalXP} XP (Charisma)!`
-      );
-      setTimeout(() => setXpResult(null), 3000);
-    }
-
-    setTitle('');
-    setContent('');
-    setMood(null);
-    setTagsInput('');
-    setIsCreating(false);
-    onClose();
-  };
-
-  // Auto-resize textarea
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-    const textarea = e.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.max(120, textarea.scrollHeight) + 'px';
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>
-            {language === 'ru' ? 'Новая запись' : 'New Entry'}
-          </SheetTitle>
-        </SheetHeader>
-
-        <div className="space-y-5 mt-3 overflow-y-auto flex-1 pb-1">
-          {/* Date indicator */}
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {formatDate(defaultDate, language)}
-            </span>
-          </div>
-
-          {/* Mood Selector */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-2 block">
-              {language === 'ru' ? 'Настроение' : 'Mood'}
-            </label>
-            <div className="flex gap-2">
-              {MOOD_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setMood(mood === opt.value ? null : opt.value)}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                    mood === opt.value
-                      ? 'ring-2 scale-110'
-                      : 'hover:bg-muted/50'
-                  }`}
-                  style={mood === opt.value ? { '--tw-ring-color': accentColor, backgroundColor: `${accentColor}12` } as React.CSSProperties : undefined}
-                >
-                  <span className="text-xl">{opt.emoji}</span>
-                  <span className="text-[9px] font-medium text-muted-foreground">
-                    {language === 'ru' ? opt.labelRu : opt.labelEn}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Title */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              {language === 'ru' ? 'Заголовок (необязательно)' : 'Title (optional)'}
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={language === 'ru' ? 'О чём эта запись?' : 'What is this entry about?'}
-            />
-          </div>
-
-          {/* Content */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              {language === 'ru' ? 'Содержание' : 'Content'}
-            </label>
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleContentChange}
-              placeholder={
-                language === 'ru'
-                  ? 'Расскажите, как прошёл день...'
-                  : 'Tell me about your day...'
-              }
-              className="min-h-[120px] resize-none"
-              autoFocus
-            />
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-[10px] text-muted-foreground">
-                {content.length} / 500
-              </span>
-              {content.length >= 500 && (
-                <motion.span
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="text-[10px] font-medium"
-                  style={{ color: accentColor }}
-                >
-                  +12 XP {language === 'ru' ? 'за длинную запись!' : 'for long entry!'}
-                </motion.span>
-              )}
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              {language === 'ru' ? 'Теги (через запятую)' : 'Tags (comma separated)'}
-            </label>
-            <Input
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder={language === 'ru' ? 'личное, работа, здоровье' : 'personal, work, health'}
-            />
-          </div>
-
-          {/* Create Button */}
-          <Button
-            onClick={handleCreate}
-            disabled={!content.trim() || isCreating}
-            className="w-full"
-            style={{ backgroundColor: accentColor }}
-          >
-            {isCreating
-              ? language === 'ru' ? 'Сохранение...' : 'Saving...'
-              : language === 'ru' ? 'Сохранить запись' : 'Save Entry'}
-          </Button>
-
-          {/* XP notification */}
-          {xpResult && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="text-center py-2 rounded-xl font-bold text-sm"
-              style={{ backgroundColor: `${accentColor}15`, color: accentColor }}
-            >
-              {xpResult}
-            </motion.div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-// ==================== Edit Entry Form ====================
-
-function EditEntryForm({
   entry,
   onClose,
-  language,
-  accentColor,
+  onSubmit,
 }: {
-  entry: DiaryEntry;
-  onClose: () => void;
+  open: boolean;
+  mode: 'create' | 'edit';
   language: 'en' | 'ru';
   accentColor: string;
+  defaultDate?: string;
+  entry?: DiaryEntry;
+  onClose: () => void;
+  onSubmit: (payload: { date: string; title: string | null; content: string; mood: string | null; tags: string[] }) => Promise<void>;
 }) {
-  const updateEntry = useDiaryStore((s) => s.updateEntry);
-  const [title, setTitle] = useState(entry.title || '');
-  const [content, setContent] = useState(entry.content);
-  const [mood, setMood] = useState<string | null>(entry.mood);
-  const [tagsInput, setTagsInput] = useState(entry.tags?.join(', ') || '');
+  const initialDate = mode === 'edit' && entry ? entry.date : (defaultDate ?? getTodayString());
+  const initialTitle = mode === 'edit' && entry ? (entry.title ?? '') : '';
+  const initialContent = mode === 'edit' && entry ? entry.content : '';
+  const initialMood = mode === 'edit' && entry ? entry.mood : null;
+  const initialTags = mode === 'edit' && entry ? (entry.tags ?? []).join(', ') : '';
+
+  const [date, setDate] = useState(initialDate);
+  const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent);
+  const [mood, setMood] = useState<string | null>(initialMood);
+  const [tagsInput, setTagsInput] = useState(initialTags);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
+
+  const tags = tagsInput.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean);
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+
+  const submit = async () => {
     if (!content.trim()) return;
     setIsSaving(true);
-
-    const tags = tagsInput
-      .split(',')
-      .map((t) => t.trim().replace(/^#/, ''))
-      .filter(Boolean);
-
-    await updateEntry(entry.id, {
-      title: title.trim() || null,
-      content: content.trim(),
-      mood: mood || null,
-      tags,
-    });
-
+    await onSubmit({ date, title: title.trim() || null, content: content.trim(), mood, tags });
     setIsSaving(false);
     onClose();
   };
 
   return (
-    <div className="space-y-5 mt-3 overflow-y-auto flex-1 pb-1">
-      {/* Mood Selector */}
-      <div>
-        <label className="text-xs text-muted-foreground mb-2 block">
-          {language === 'ru' ? 'Настроение' : 'Mood'}
-        </label>
-        <div className="flex gap-2">
-          {MOOD_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setMood(mood === opt.value ? null : opt.value)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                mood === opt.value
-                  ? 'ring-2 scale-110'
-                  : 'hover:bg-muted/50'
-              }`}
-              style={mood === opt.value ? { '--tw-ring-color': accentColor, backgroundColor: `${accentColor}12` } as React.CSSProperties : undefined}
-            >
-              <span className="text-xl">{opt.emoji}</span>
-              <span className="text-[9px] font-medium text-muted-foreground">
-                {language === 'ru' ? opt.labelRu : opt.labelEn}
-              </span>
-            </button>
-          ))}
+    <Dialog open={open} onOpenChange={(state) => !state && onClose()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{mode === 'create' ? (language === 'ru' ? 'Новая запись' : 'New journal entry') : (language === 'ru' ? 'Редактирование записи' : 'Edit entry')}</DialogTitle>
+          <DialogDescription>
+            {language === 'ru' ? 'Ctrl/Cmd + Enter — быстро сохранить.' : 'Ctrl/Cmd + Enter to save quickly.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4" onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit(); }}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">{language === 'ru' ? 'Дата' : 'Date'}</label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">{language === 'ru' ? 'Заголовок' : 'Title'}</label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={language === 'ru' ? 'Ключевая мысль дня' : 'Main thought of the day'} />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs text-muted-foreground">{language === 'ru' ? 'Настроение' : 'Mood'}</label>
+            <div className="grid grid-cols-5 gap-2">
+              {MOOD_OPTIONS.map((item) => (
+                <button
+                  key={item.value}
+                  className={`rounded-xl border p-2 text-center ${mood === item.value ? 'ring-2' : ''}`}
+                  style={mood === item.value ? ({ '--tw-ring-color': accentColor } as CSSProperties) : undefined}
+                  onClick={() => setMood(mood === item.value ? null : item.value)}
+                >
+                  <span className="block text-xl">{item.emoji}</span>
+                  <span className="text-[10px] text-muted-foreground">{language === 'ru' ? item.labelRu : item.labelEn}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{language === 'ru' ? 'Текст записи' : 'Entry text'}</label>
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="min-h-[180px] resize-y"
+              placeholder={language === 'ru' ? 'Опишите события, эмоции, выводы и благодарности за день...' : 'Describe events, emotions, lessons, and gratitude from your day...'}
+            />
+            <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>{wordCount} {language === 'ru' ? 'слов' : 'words'} • {readingMinutes(content)} {language === 'ru' ? 'мин чтения' : 'min read'}</span>
+              {content.length >= 500 && <span style={{ color: accentColor }}><Sparkles className="mr-1 inline h-3 w-3" />+12 XP</span>}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{language === 'ru' ? 'Теги (через запятую)' : 'Tags (comma-separated)'}</label>
+            <Input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder={language === 'ru' ? 'работа, спорт, семья' : 'work, gym, family'} />
+            {tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]">
+                    <Tag className="h-3 w-3" />#{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Button onClick={submit} disabled={isSaving || !content.trim()} className="w-full" style={{ backgroundColor: accentColor }}>
+            {isSaving ? (language === 'ru' ? 'Сохранение...' : 'Saving...') : (mode === 'create' ? (language === 'ru' ? 'Создать запись' : 'Create entry') : (language === 'ru' ? 'Сохранить изменения' : 'Save changes'))}
+          </Button>
         </div>
-      </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-      {/* Title */}
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">
-          {language === 'ru' ? 'Заголовок' : 'Title'}
-        </label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-      </div>
+function ViewEntryDialog({
+  open,
+  entry,
+  language,
+  accentColor,
+  onClose,
+  onEdit,
+}: {
+  open: boolean;
+  entry: DiaryEntry | null;
+  language: 'en' | 'ru';
+  accentColor: string;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(state) => !state && onClose()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
+        {!entry ? null : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <span>{getMoodEmoji(entry.mood)}</span>
+                <span>{entry.title || (language === 'ru' ? 'Без заголовка' : 'Untitled')}</span>
+              </DialogTitle>
+              <DialogDescription>
+                <CalendarDays className="mr-1 inline h-4 w-4" />{formatDate(entry.date, language)} • {getMoodLabel(entry.mood, language)}
+              </DialogDescription>
+            </DialogHeader>
 
-      {/* Content */}
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">
-          {language === 'ru' ? 'Содержание' : 'Content'}
-        </label>
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="min-h-[120px] resize-none"
-        />
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-[10px] text-muted-foreground">
-            {content.length} / 500
-          </span>
-          {content.length >= 500 && (
-            <span className="text-[10px] font-medium" style={{ color: accentColor }}>
-              +12 XP
-            </span>
-          )}
-        </div>
-      </div>
+            <div className="rounded-lg border bg-muted/25 p-4">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">{entry.content}</p>
+            </div>
 
-      {/* Tags */}
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">
-          {language === 'ru' ? 'Теги' : 'Tags'}
-        </label>
-        <Input
-          value={tagsInput}
-          onChange={(e) => setTagsInput(e.target.value)}
-        />
-      </div>
+            {entry.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {entry.tags.map((tag) => (
+                  <span key={tag} className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${accentColor}14`, color: accentColor }}>
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
 
-      <Button
-        onClick={handleSave}
-        disabled={!content.trim() || isSaving}
-        className="w-full"
-        style={{ backgroundColor: accentColor }}
-      >
-        {isSaving
-          ? language === 'ru' ? 'Сохранение...' : 'Saving...'
-          : language === 'ru' ? 'Сохранить' : 'Save'}
-      </Button>
-    </div>
+            <div className="flex gap-2">
+              <Button onClick={onEdit} className="flex-1" style={{ backgroundColor: accentColor }}>
+                <Edit3 className="mr-2 h-4 w-4" />
+                {language === 'ru' ? 'Редактировать' : 'Edit'}
+              </Button>
+              <Button variant="outline" onClick={onClose} className="flex-1">
+                {language === 'ru' ? 'Закрыть' : 'Close'}
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
