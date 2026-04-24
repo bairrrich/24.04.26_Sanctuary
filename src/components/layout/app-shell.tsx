@@ -1,30 +1,31 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/app-store';
 import { MODULE_REGISTRY } from '@/lib/module-config';
-import { LAYOUT, ANIMATION } from '@/lib/constants';
+import { ANIMATION } from '@/lib/constants';
 import { Sidebar } from './sidebar';
 import { MobileNavbar } from './mobile-navbar';
-
-// Module page components (lazy-like imports)
-import { FeedPage } from '@/components/modules/feed/feed-page';
-import { DiaryPage } from '@/components/modules/diary/diary-page';
-import { ShiftsPage } from '@/components/modules/shifts/shifts-page';
-import { FinancePage } from '@/components/modules/finance/finance-page';
-import { NutritionPage } from '@/components/modules/nutrition/nutrition-page';
-import { TrainingPage } from '@/components/modules/training/training-page';
-import { HabitsPage } from '@/components/modules/habits/habits-page';
-import { CollectionsPage } from '@/components/modules/collections/collections-page';
-import { GenealogyPage } from '@/components/modules/genealogy/genealogy-page';
-import { HealthPage } from '@/components/modules/health/health-page';
-import { CalendarPage } from '@/components/modules/calendar/calendar-page';
-import { LooksmaxxingPage } from '@/components/modules/looksmaxxing/looksmaxxing-page';
-import { GamificationPage } from '@/components/modules/gamification/gamification-page';
-import { RemindersPage } from '@/components/modules/reminders/reminders-page';
-import { SettingsPage } from '@/components/modules/settings/settings-page';
 import { XPNotification } from '@/components/shared/xp-notification';
 import type { ModuleId } from '@/types';
+
+// Lazy-load all module pages to reduce initial bundle size and memory usage
+const FeedPage = dynamic(() => import('@/components/modules/feed/feed-page').then(m => ({ default: m.FeedPage })), { ssr: false });
+const DiaryPage = dynamic(() => import('@/components/modules/diary/diary-page').then(m => ({ default: m.DiaryPage })), { ssr: false });
+const ShiftsPage = dynamic(() => import('@/components/modules/shifts/shifts-page').then(m => ({ default: m.ShiftsPage })), { ssr: false });
+const FinancePage = dynamic(() => import('@/components/modules/finance/finance-page').then(m => ({ default: m.FinancePage })), { ssr: false });
+const NutritionPage = dynamic(() => import('@/components/modules/nutrition/nutrition-page').then(m => ({ default: m.NutritionPage })), { ssr: false });
+const TrainingPage = dynamic(() => import('@/components/modules/training/training-page').then(m => ({ default: m.TrainingPage })), { ssr: false });
+const HabitsPage = dynamic(() => import('@/components/modules/habits/habits-page').then(m => ({ default: m.HabitsPage })), { ssr: false });
+const CollectionsPage = dynamic(() => import('@/components/modules/collections/collections-page').then(m => ({ default: m.CollectionsPage })), { ssr: false });
+const GenealogyPage = dynamic(() => import('@/components/modules/genealogy/genealogy-page').then(m => ({ default: m.GenealogyPage })), { ssr: false });
+const HealthPage = dynamic(() => import('@/components/modules/health/health-page').then(m => ({ default: m.HealthPage })), { ssr: false });
+const CalendarPage = dynamic(() => import('@/components/modules/calendar/calendar-page').then(m => ({ default: m.CalendarPage })), { ssr: false });
+const LooksmaxxingPage = dynamic(() => import('@/components/modules/looksmaxxing/looksmaxxing-page').then(m => ({ default: m.LooksmaxxingPage })), { ssr: false });
+const GamificationPage = dynamic(() => import('@/components/modules/gamification/gamification-page').then(m => ({ default: m.GamificationPage })), { ssr: false });
+const RemindersPage = dynamic(() => import('@/components/modules/reminders/reminders-page').then(m => ({ default: m.RemindersPage })), { ssr: false });
+const SettingsPage = dynamic(() => import('@/components/modules/settings/settings-page').then(m => ({ default: m.SettingsPage })), { ssr: false });
 
 const MODULE_COMPONENTS: Record<ModuleId, React.ComponentType> = {
   feed: FeedPage,
@@ -62,18 +63,15 @@ export function AppShell() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto pb-16 lg:pb-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeModule}
-              initial={ANIMATION.PAGE_TRANSITION.initial}
-              animate={ANIMATION.PAGE_TRANSITION.animate}
-              exit={ANIMATION.PAGE_TRANSITION.exit}
-              transition={{ duration: ANIMATION.DURATION_NORMAL }}
-              className="min-h-full"
-            >
-              <ActiveComponent />
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={activeModule}
+            initial={ANIMATION.PAGE_TRANSITION.initial}
+            animate={ANIMATION.PAGE_TRANSITION.animate}
+            transition={{ duration: ANIMATION.DURATION_NORMAL }}
+            className="min-h-full"
+          >
+            <ActiveComponent />
+          </motion.div>
         </div>
       </main>
 
