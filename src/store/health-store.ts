@@ -78,6 +78,7 @@ interface HealthState {
   updateGoal: (id: string, data: Partial<HealthGoal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   setSelectedDate: (date: string) => void;
+  refreshGamification: () => Promise<void>;
 }
 
 // ==================== Store ====================
@@ -88,7 +89,6 @@ export const useHealthStore = create<HealthState>()((set, get) => ({
   goals: [],
   selectedDate: getTodayString(),
   isLoading: false,
-
   loadMeasurements: async (dateFrom?: string, dateTo?: string) => {
     try {
       const params = new URLSearchParams();

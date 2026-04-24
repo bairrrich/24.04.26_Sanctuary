@@ -10,7 +10,7 @@ import { useFeedStore } from '@/store/feed-store';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 
 const MOODS = [
   { value: 'great', icon: '😄', labelEn: 'Great', labelRu: 'Отлично', color: '#22c55e' },
@@ -53,7 +53,7 @@ export function FeedPage() {
     <div className="flex flex-col h-full">
       <PageHeader title={language === 'ru' ? 'Лента' : 'Feed'} icon={MessageSquare} accentColor={config.accentColor} subtitle={language === 'ru' ? 'Мысли и моменты' : 'Thoughts and moments'} />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-3`}>
         {posts.length === 0 ? (
           <EmptyState icon={MessageSquare} title={language === 'ru' ? 'Лента пуста' : 'Feed is empty'} description={language === 'ru' ? 'Поделитесь первой мыслью' : 'Share your first thought'} accentColor={config.accentColor} />
         ) : posts.map((post, i) => {
@@ -89,7 +89,14 @@ export function FeedPage() {
           <div className="space-y-4 mt-4">
             <div className="flex gap-2">
               {MOODS.map((m) => (
-                <button key={m.value} onClick={() => setMood(mood === m.value ? null : m.value)} className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${mood === m.value ? 'ring-2 scale-110' : 'opacity-50 hover:opacity-80'}`} style={mood === m.value ? { ringColor: m.color } : {}}>
+                <button
+                  key={m.value}
+                  onClick={() => setMood(mood === m.value ? null : m.value)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${
+                    mood === m.value ? 'scale-110' : 'opacity-50 hover:opacity-80'
+                  }`}
+                  style={mood === m.value ? { boxShadow: `0 0 0 2px ${m.color}` } : undefined}
+                >
                   {m.icon}
                 </button>
               ))}

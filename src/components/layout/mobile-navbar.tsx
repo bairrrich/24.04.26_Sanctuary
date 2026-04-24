@@ -13,7 +13,9 @@ import { LAYOUT, ANIMATION, Z_INDEX } from '@/lib/constants';
 import { t } from '@/lib/i18n';
 import type { ModuleId } from '@/types';
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+type IconComponent = React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+
+const ICON_MAP: Record<string, IconComponent> = {
   Rss, Wallet, Apple, Dumbbell, MoreHorizontal,
   BookOpen, CalendarClock, Target, Library, GitBranch,
   Heart, Calendar, Sparkles, Trophy, Bell, Settings, X,

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const unlockedIds = new Set(character.achievements.map(a => a.achievementId));
 
     // Map unlocked info by ID for quick lookup
-    const unlockedMap = new Map(
+    const unlockedMap = new Map<string, (typeof character.achievements)[number]>(
       character.achievements.map(a => [a.achievementId, a])
     );
 

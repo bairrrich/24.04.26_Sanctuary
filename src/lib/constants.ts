@@ -70,6 +70,47 @@ export const SPACING = {
   ITEM_GAP: 'gap-2 sm:gap-3',
 } as const;
 
+// ==================== Design System Tokens ====================
+export const DESIGN_TOKENS = {
+  spacing: {
+    1: 4,
+    2: 8,
+    3: 12,
+    4: 16,
+    6: 24,
+    8: 32,
+    12: 48,
+    16: 64,
+  },
+  radius: {
+    sm: 6,
+    md: 10,
+    lg: 16,
+  },
+  elevation: {
+    0: 'none',
+    1: '0 1px 2px rgba(0, 0, 0, 0.06)',
+    2: '0 4px 12px rgba(0, 0, 0, 0.10)',
+    3: '0 10px 24px rgba(0, 0, 0, 0.14)',
+    4: '0 18px 36px rgba(0, 0, 0, 0.18)',
+  },
+  motion: {
+    fastMs: 150,
+    baseMs: 200,
+    slowMs: 300,
+    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  typography: {
+    h1: { size: 28, line: 36, weight: 700 },
+    h2: { size: 22, line: 30, weight: 700 },
+    h3: { size: 18, line: 26, weight: 600 },
+    body1: { size: 16, line: 24, weight: 400 },
+    body2: { size: 14, line: 20, weight: 400 },
+    caption: { size: 12, line: 16, weight: 500 },
+    button: { size: 14, line: 20, weight: 600 },
+  },
+} as const;
+
 // ==================== Z-Index ====================
 export const Z_INDEX = {
   BASE: 0,
