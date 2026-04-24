@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { UserQuest } from '@prisma/client';
 import { db } from '@/lib/db';
 import { generateDailyQuestSet } from '@/lib/gamification/quest-generator';
 import { QUEST_POOL } from '@/lib/gamification/quest-pool';
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
     const endOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
 
     // Create UserQuest records
-    const created = [];
+    const created: UserQuest[] = [];
     for (const template of templates) {
       // Skip if already exists (completed or otherwise) — use try/catch for unique constraint
       try {
