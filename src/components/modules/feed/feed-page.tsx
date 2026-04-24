@@ -59,6 +59,9 @@ export function FeedPage() {
     return d.toLocaleDateString();
   };
 
+  const doneCount = [checklist.feedNote, checklist.firstWorkout, checklist.firstExpense].filter(Boolean).length;
+  const checklistCompleted = doneCount === 3;
+
   return (
     <div className="flex h-full flex-col">
       <PageHeader title={language === 'ru' ? 'Лента' : 'Feed'} icon={MessageSquare} accentColor={config.accentColor} subtitle={language === 'ru' ? 'Мысли и моменты' : 'Thoughts and moments'} />
