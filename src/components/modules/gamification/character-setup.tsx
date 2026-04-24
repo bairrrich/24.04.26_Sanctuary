@@ -18,12 +18,28 @@ const SETUP_STEPS = [
   { id: 'focus', icon: Sparkles, titleRu: 'Фокус развития', titleEn: 'Development Focus' },
 ];
 
+type SetupData = {
+  height: string;
+  weight: string;
+  age: string;
+  gender: string;
+  dailyCalories: string;
+  dailyProtein: string;
+  dailyFat: string;
+  dailyCarbs: string;
+  dailyWater: string;
+  fitnessLevel: string;
+  targetSleepHours: string;
+  targetWakeTime: string;
+  focusAreas: string[];
+};
+
 export function CharacterSetup() {
   const language = useSettingsStore((s) => s.language);
   const { createCharacter, updateSetup, completeSetup } = useGamificationStore();
   const [step, setStep] = useState(0);
   const [characterName, setCharacterName] = useState('');
-  const [setupData, setSetupData] = useState({
+  const [setupData, setSetupData] = useState<SetupData>({
     height: '175',
     weight: '70',
     age: '25',
@@ -241,7 +257,7 @@ function NameStep({ value, onChange, language }: { value: string; onChange: (v: 
   );
 }
 
-function PhysicalStep({ data, onChange, language }: { data: Record<string, string>; onChange: (v: Record<string, string>) => void; language: 'en' | 'ru' }) {
+function PhysicalStep({ data, onChange, language }: { data: SetupData; onChange: (v: SetupData) => void; language: 'en' | 'ru' }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -311,7 +327,7 @@ function PhysicalStep({ data, onChange, language }: { data: Record<string, strin
   );
 }
 
-function NutritionStep({ data, onChange, language }: { data: Record<string, string>; onChange: (v: Record<string, string>) => void; language: 'en' | 'ru' }) {
+function NutritionStep({ data, onChange, language }: { data: SetupData; onChange: (v: SetupData) => void; language: 'en' | 'ru' }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -369,7 +385,7 @@ function NutritionStep({ data, onChange, language }: { data: Record<string, stri
   );
 }
 
-function TrainingStep({ data, onChange, language }: { data: Record<string, string>; onChange: (v: Record<string, string>) => void; language: 'en' | 'ru' }) {
+function TrainingStep({ data, onChange, language }: { data: SetupData; onChange: (v: SetupData) => void; language: 'en' | 'ru' }) {
   const levels = [
     { value: 'beginner', labelRu: 'Новичок', labelEn: 'Beginner', descRu: 'Только начинаю', descEn: 'Just starting', icon: '🌱' },
     { value: 'intermediate', labelRu: 'Средний', labelEn: 'Intermediate', descRu: 'Тренируюсь регулярно', descEn: 'Training regularly', icon: '💪' },
@@ -413,7 +429,7 @@ function TrainingStep({ data, onChange, language }: { data: Record<string, strin
   );
 }
 
-function HabitsStep({ data, onChange, language }: { data: Record<string, string>; onChange: (v: Record<string, string>) => void; language: 'en' | 'ru' }) {
+function HabitsStep({ data, onChange, language }: { data: SetupData; onChange: (v: SetupData) => void; language: 'en' | 'ru' }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -449,7 +465,7 @@ function HabitsStep({ data, onChange, language }: { data: Record<string, string>
   );
 }
 
-function FocusStep({ data, onToggle, language }: { data: Record<string, string>; onToggle: (area: string) => void; language: 'en' | 'ru' }) {
+function FocusStep({ data, onToggle, language }: { data: SetupData; onToggle: (area: string) => void; language: 'en' | 'ru' }) {
   const areas = [
     { id: 'strength', icon: '⚔️', nameRu: 'Сила', nameEn: 'Strength', descRu: 'Тренировки, рекорды', descEn: 'Workouts, records' },
     { id: 'agility', icon: '⚡', nameRu: 'Ловкость', nameEn: 'Agility', descRu: 'Привычки, дисциплина', descEn: 'Habits, discipline' },
