@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { ChevronLeft, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LAYOUT, ANIMATION } from '@/lib/constants';
+import { LAYOUT, ANIMATION, SPACING } from '@/lib/constants';
 
 interface PageHeaderProps {
   title: string;
@@ -26,7 +26,7 @@ export function PageHeader({
     <motion.header
       initial={ANIMATION.FADE_TRANSITION.initial}
       animate={ANIMATION.FADE_TRANSITION.animate}
-      className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/80 backdrop-blur-md px-4 sm:px-6"
+      className={`sticky top-0 z-10 flex items-center gap-3 border-b bg-background/80 backdrop-blur-md ${SPACING.PAGE_PX}`}
       style={{ height: LAYOUT.HEADER_HEIGHT }}
     >
       {onBack && (
@@ -51,9 +51,9 @@ export function PageHeader({
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <h1 className="text-base font-semibold leading-tight truncate">{title}</h1>
+        <h1 className="text-h3 leading-tight truncate">{title}</h1>
         {subtitle && (
-          <p className="text-xs text-muted-foreground leading-tight truncate">{subtitle}</p>
+          <p className="text-caption text-muted-foreground leading-tight truncate">{subtitle}</p>
         )}
       </div>
       {rightAction && (
