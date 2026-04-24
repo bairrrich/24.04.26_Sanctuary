@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/app-store';
@@ -10,6 +11,7 @@ import { Sidebar } from './sidebar';
 import { MobileNavbar } from './mobile-navbar';
 import { XPNotification } from '@/components/shared/xp-notification';
 import { AuthPage } from '@/components/auth/auth-page';
+import { CommandPalette } from './command-palette';
 import type { ModuleId } from '@/types';
 
 // Lazy-load all module pages to reduce initial bundle size and memory usage
@@ -54,6 +56,20 @@ export function AppShell() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const isInitialized = useAuthStore((s) => s.isInitialized);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const moduleFromUrl = params.get('module');
+    if (moduleFromUrl && moduleFromUrl in MODULE_REGISTRY) {
+      setActiveModule(moduleFromUrl as ModuleId);
+    }
+  }, [setActiveModule]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('module', activeModule);
+    window.history.replaceState({}, '', url.toString());
+  }, [activeModule]);
+
   // Show auth page if not authenticated and not guest
   // Only show auth after initialization to avoid flash
   if (isInitialized && !isAuthenticated && !isGuest) {
@@ -93,6 +109,9 @@ export function AppShell() {
 
       {/* XP Notification Overlay */}
       <XPNotification />
+
+      {/* Global command palette (Cmd/Ctrl + K) */}
+      <CommandPalette />
     </div>
   );
 }
