@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Plus, Flame, Check, Trash2, Edit3, X, ChevronDown } from 'lucide-react';
 import { PageHeader, ModuleTabs, FAB, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import { HABIT_ICONS, HABIT_COLORS, getTodayString } from '@/lib/habit-utils';
 import { useSettingsStore } from '@/store/settings-store';
 import { useHabitsStore, type Habit, type CreateHabitData } from '@/store/habits-store';
@@ -61,7 +61,7 @@ export function HabitsPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

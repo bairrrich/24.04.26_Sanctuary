@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import type { TabItem } from '@/types';
 
 const RELATIONS = [
@@ -73,7 +73,7 @@ export function GenealogyPage() {
     <div className="flex flex-col h-full">
       <PageHeader title={language === 'ru' ? 'Родословная' : 'Genealogy'} icon={Users} accentColor={config.accentColor} subtitle={language === 'ru' ? 'Семья и родственники' : 'Family and relatives'} />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         {/* Upcoming birthdays */}
         {upcomingBirthdays.length > 0 && (
           <div className="rounded-xl border border-amber-200 bg-amber-500/5 p-3 space-y-1.5">

@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { PageHeader, ModuleTabs, FAB, EmptyState } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
-import { ANIMATION } from '@/lib/constants';
+import { ANIMATION, SPACING } from '@/lib/constants';
 import { useSettingsStore } from '@/store/settings-store';
 import { t } from '@/lib/i18n';
 import {
@@ -90,7 +90,7 @@ export function LooksmaxxingPage() {
       <PageHeader title={t(language, 'modules.looksmaxxing')} icon={Sparkles} accentColor={config.accentColor}
         subtitle={routines.length > 0 ? `${routines.length} ${t(language, 'looksmaxxing.routinesCount')}` : undefined} />
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-4`}>
         <ModuleTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} accentColor={config.accentColor} />
         {activeTab === 'routines' && <RoutinesTab language={language} accentColor={config.accentColor} onAdd={() => setShowCreateRoutine(true)} />}
         {activeTab === 'today' && <TodayTab language={language} accentColor={config.accentColor} />}
