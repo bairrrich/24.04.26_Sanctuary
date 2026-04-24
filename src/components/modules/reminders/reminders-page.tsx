@@ -129,7 +129,7 @@ export function RemindersPage() {
 
   useEffect(() => { loadReminders(true); }, [loadReminders]);
 
-  const today = getTodayISO();
+  const today = getTodayISODate();
   const todayReminders = reminders.filter((r) => r.date === today && !r.isCompleted);
   const upcomingReminders = reminders.filter((r) => r.date > today && !r.isCompleted).sort((a, b) => a.date.localeCompare(b.date));
   const overdueReminders = reminders.filter((r) => r.date < today && !r.isCompleted).sort((a, b) => a.date.localeCompare(b.date));
@@ -163,7 +163,7 @@ export function RemindersPage() {
   };
 
   const handleTitleChange = (value: string) => {
-    const parsed = parseNaturalInput(value, new Date());
+    const parsed = parseReminderInput(value, new Date());
     if (!parsed) {
       setParseHint('');
       setForm((prev) => ({ ...prev, title: value }));
@@ -199,7 +199,7 @@ export function RemindersPage() {
   const reschedulePlusOneDay = async (reminder: ReminderItem) => {
     const nextDate = new Date(reminder.date);
     nextDate.setDate(nextDate.getDate() + 1);
-    await updateReminder(reminder.id, { date: formatISODate(nextDate) });
+    await updateReminder(reminder.id, { date: toISODate(nextDate) });
   };
 
   return (

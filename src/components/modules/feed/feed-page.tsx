@@ -1,24 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MessageSquare, Plus, Pin, Trash2, Heart, X, RotateCcw } from 'lucide-react';
-import { PageHeader, EmptyState, FAB } from '@/components/shared';
+import { useEffect, useState } from 'react';
+import { MessageSquare } from 'lucide-react';
+import { EmptyState, PageHeader } from '@/components/shared';
 import { MODULE_REGISTRY } from '@/lib/module-config';
 import { useSettingsStore } from '@/store/settings-store';
 import { useAppStore } from '@/store/app-store';
 import { useFeedStore } from '@/store/feed-store';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ANIMATION, SPACING } from '@/lib/constants';
-
-const MOODS = [
-  { value: 'great', icon: '😄', labelEn: 'Great', labelRu: 'Отлично', color: '#22c55e' },
-  { value: 'good', icon: '🙂', labelEn: 'Good', labelRu: 'Хорошо', color: '#84cc16' },
-  { value: 'neutral', icon: '😐', labelEn: 'Neutral', labelRu: 'Нормально', color: '#f59e0b' },
-  { value: 'bad', icon: '😟', labelEn: 'Bad', labelRu: 'Плохо', color: '#ef4444' },
-];
+import { SPACING } from '@/lib/constants';
+import { FeedPostCard, NewPostSheet, TodayFocusCard } from './components/feed-sections';
 
 export function FeedPage() {
   const language = useSettingsStore((s) => s.language);
@@ -28,17 +18,22 @@ export function FeedPage() {
   const markChecklistDone = useAppStore((s) => s.markChecklistDone);
   const dismissChecklist = useAppStore((s) => s.dismissChecklist);
   const resetChecklist = useAppStore((s) => s.resetChecklist);
+
   const config = MODULE_REGISTRY.feed;
-  const { posts, isLoading, loadPosts, addPost, togglePin, deletePost } = useFeedStore();
+  const { posts, loadPosts, addPost, togglePin, deletePost } = useFeedStore();
+
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<string | null>(null);
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
+  const activationDoneCount = [checklist.feedNote, checklist.firstWorkout, checklist.firstExpense].filter(Boolean).length;
+  const isActivationChecklistComplete = activationDoneCount === 3;
+
   const triggerFab = () => {
     requestAnimationFrame(() => {
-      const fab = document.querySelector<HTMLButtonElement>('[data-fab=\"true\"]');
+      const fab = document.querySelector<HTMLButtonElement>('[data-fab="true"]');
       fab?.click();
     });
   };
@@ -68,145 +63,56 @@ export function FeedPage() {
   const checklistCompleted = doneCount === 3;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <PageHeader title={language === 'ru' ? 'Лента' : 'Feed'} icon={MessageSquare} accentColor={config.accentColor} subtitle={language === 'ru' ? 'Мысли и моменты' : 'Thoughts and moments'} />
 
       <div className={`flex-1 overflow-y-auto ${SPACING.PAGE_PX} ${SPACING.PAGE_PY} space-y-3`}>
-        <div className="rounded-xl border bg-card p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {language === 'ru' ? 'Фокус на сегодня' : 'Today Focus'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {language === 'ru' ? 'Быстрые действия для ежедневного прогресса' : 'Quick actions for daily progress'}
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={triggerFab}>
-              {language === 'ru' ? 'Запись' : 'Note'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={() => {
-                markChecklistDone('firstWorkout');
-                setActiveModule('training');
-                triggerFab();
-              }}
-            >
-              {language === 'ru' ? 'Тренировка' : 'Workout'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={() => {
-                markChecklistDone('firstExpense');
-                setActiveModule('finance');
-                triggerFab();
-              }}
-            >
-              {language === 'ru' ? 'Расход' : 'Expense'}
-            </Button>
-          </div>
-          {!checklistDismissed && (
-            <div className="mt-3 rounded-lg bg-muted/50 p-2">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {language === 'ru' ? 'Чеклист запуска' : 'Activation checklist'}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">{doneCount}/3</span>
-                  <button
-                    onClick={dismissChecklist}
-                    className="rounded p-0.5 text-muted-foreground hover:bg-muted"
-                    aria-label={language === 'ru' ? 'Скрыть чеклист' : 'Hide checklist'}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${(doneCount / 3) * 100}%` }}
-                />
-              </div>
-              {checklistCompleted && (
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">
-                    {language === 'ru' ? 'Отличный старт! Чеклист можно пройти заново.' : 'Great start! You can run the checklist again.'}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2 text-[10px]"
-                    onClick={resetChecklist}
-                  >
-                    <RotateCcw className="mr-1 h-3 w-3" />
-                    {language === 'ru' ? 'Сброс' : 'Reset'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <TodayFocusCard
+          language={language}
+          doneCount={activationDoneCount}
+          checklistCompleted={isActivationChecklistComplete}
+          checklistDismissed={checklistDismissed}
+          onQuickNote={triggerFab}
+          onWorkout={() => {
+            markChecklistDone('firstWorkout');
+            setActiveModule('training');
+            triggerFab();
+          }}
+          onExpense={() => {
+            markChecklistDone('firstExpense');
+            setActiveModule('finance');
+            triggerFab();
+          }}
+          onDismissChecklist={dismissChecklist}
+          onResetChecklist={resetChecklist}
+        />
 
-        {posts.length === 0 ? (
-          <EmptyState icon={MessageSquare} title={language === 'ru' ? 'Лента пуста' : 'Feed is empty'} description={language === 'ru' ? 'Поделитесь первой мыслью' : 'Share your first thought'} accentColor={config.accentColor} />
-        ) : posts.map((post, i) => {
-          const moodInfo = MOODS.find((m) => m.value === post.mood);
-          return (
-            <motion.div key={post.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className={`rounded-xl border bg-card p-4 ${post.isPinned ? 'ring-1 ring-primary/20' : ''}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  {moodInfo && <span className="text-lg mr-1">{moodInfo.icon}</span>}
-                  <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {post.isPinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
-                  <button onClick={() => togglePin(post.id, !post.isPinned)} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted transition-colors"><Pin className={`h-3.5 w-3.5 ${post.isPinned ? 'text-primary fill-primary' : 'text-muted-foreground'}`} /></button>
-                  <button onClick={() => deletePost(post.id)} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-destructive/10 transition-colors"><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[10px] text-muted-foreground">{formatTime(post.createdAt)}</span>
-                {post.tags && <span className="text-[10px] text-primary">#{post.tags}</span>}
-              </div>
-            </motion.div>
-          );
-        })}
+        {posts.length === 0
+          ? <EmptyState icon={MessageSquare} title={language === 'ru' ? 'Лента пуста' : 'Feed is empty'} description={language === 'ru' ? 'Поделитесь первой мыслью' : 'Share your first thought'} accentColor={config.accentColor} />
+          : posts.map((post, i) => (
+            <FeedPostCard
+              key={post.id}
+              post={post}
+              index={i}
+              language={language}
+              formatTime={formatTime}
+              onTogglePin={togglePin}
+              onDelete={deletePost}
+            />
+          ))}
       </div>
 
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <FAB accentColor={config.accentColor} onClick={() => setIsOpen(true)} />
-        </SheetTrigger>
-        <SheetContent>
-          <SheetHeader><SheetTitle>{language === 'ru' ? 'Новая запись' : 'New Post'}</SheetTitle></SheetHeader>
-          <div className="space-y-4 mt-4">
-            <div className="flex gap-2">
-              {MOODS.map((m) => (
-                <button
-                  key={m.value}
-                  onClick={() => setMood(mood === m.value ? null : m.value)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${
-                    mood === m.value ? 'scale-110' : 'opacity-50 hover:opacity-80'
-                  }`}
-                  style={mood === m.value ? { boxShadow: `0 0 0 2px ${m.color}` } : undefined}
-                >
-                  {m.icon}
-                </button>
-              ))}
-            </div>
-            <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={language === 'ru' ? 'Что на уме?' : "What's on your mind?"} rows={4} autoFocus />
-            <Button onClick={handleAdd} disabled={!content.trim()} className="w-full">{language === 'ru' ? 'Опубликовать' : 'Post'}</Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <NewPostSheet
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        accentColor={config.accentColor}
+        language={language}
+        content={content}
+        mood={mood}
+        onContentChange={setContent}
+        onMoodChange={setMood}
+        onSubmit={handleAdd}
+      />
     </div>
   );
 }
